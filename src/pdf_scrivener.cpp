@@ -1,5 +1,3 @@
-// wxWidgets "Hello world" Program
-// For compilers that support precompilation, includes "wx/wx.h".
 #include <fstream>
 #include <wx/wxprec.h>
 
@@ -68,16 +66,35 @@ void MyFrame::OnOpen(wxCommandEvent& event)
     if (openFileDialog.ShowModal() == wxID_CANCEL)
         return;     // if user cancels
 
-    wxFileInputStream input_stream(openFileDialog.GetPath());
-    if (!input_stream.IsOk())
-    {
-        wxLogError("Cannot open file '%s'.", openFileDialog.GetPath());
+    // get selected pdf
+    wxString wxFilePath = openFileDialog.GetPath();
+    std::string pdfFilePath(wxFilePath.mb_str());
+
+    // extract text from pdf
+    TextExtraction pdfData;
+    if (pdfData.ExtractText(pdfFilePath) != PDFHummus::eSuccess) {
+        wxLogMessage("Failed to load PDF file");
         return;
-    } else{
-        pdfFilePath = openFileDialog.GetPath();
-        std::cout << "PDF file path: " << pdfFilePath << std::endl;
-    }    
+    }
+
+    // Get the text of page 5
+    ParsedTextPlacementListList pdfPages = pdfData.textsForPages;
+    if (pdfPages.size() < 5) {
+        wxLogMessage("PDF file has less than 5 pages");
+        return;
+    }
+    auto page5 = pdfPages.begin();
+    std::advance(page5, 4);
+    std::string page5Text;
+    for(; page5 != pdfPages.end(); ++page5) {
+        for (const auto& placement : *page5) {
+            page5Text += placement.text;
+        }
+    }
+    // Display the text of page 5
+    wxMessageBox(page5Text, "Page 5 Text", wxOK | wxICON_INFORMATION);
 }
+
 
 /*
 int main() {
