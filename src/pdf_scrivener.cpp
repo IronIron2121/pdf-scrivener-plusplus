@@ -1,6 +1,12 @@
 // wxWidgets "Hello world" Program
 // For compilers that support precompilation, includes "wx/wx.h".
+#include <fstream>
 #include <wx/wxprec.h>
+
+// file dialog, filestream
+#include <wx/filedlg.h> 
+#include <wx/wfstream.h>
+
 #ifndef WX_PRECOMP
     #include <wx/wx.h>
 #endif
@@ -8,73 +14,132 @@
 #include <regex>
 #include <iostream>
 
+// create an empty vector for strings
+std::vector<std::string> extractedText;
 std::string printable = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\x0b\x0c";
 std::string pdfFilePath = "./bin/inputs/GoodHeart.pdf";
+std::string bad_chars;
 
 
+#include <wx/wx.h>
+#include <wx/filedlg.h>
 
-int main() {
-    TextExtraction textExtractor;
+class MyApp: public wxApp
+{
+public:
+    virtual bool OnInit();
+};
 
-    // Extract text placements from the PDF
-    if (textExtractor.ExtractTextPlacements(pdfFilePath, 0, -1) != PDFHummus::eSuccess) {
-        std::cerr << "Failed to extract text placements from the PDF file." << std::endl;
-        return 1;
-    }
+class MyFrame: public wxFrame
+{
+public:
+    MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size);
 
-    // Get the extracted text for each page and print it
-    std::list<ParsedTextPlacementList> textsForPages = textExtractor.GetTextsForPages();
-    int pageNum = 1;
-    for (const auto& pageText : textsForPages) {
-        std::cout << "Page " << pageNum << ":\n";
-        for (const auto& textPlacement : pageText) {
-            std::cout << textPlacement.text << "\n";
-        }
-        std::cout << "\n\n";
-        pageNum++;
-    }
+    void OnOpen(wxCommandEvent& event);
 
-    return 0;
+private:
+    wxButton* m_button;
+    wxDECLARE_EVENT_TABLE();
+};
+
+wxBEGIN_EVENT_TABLE(MyFrame, wxFrame)
+    EVT_BUTTON(wxID_OPEN, MyFrame::OnOpen)
+wxEND_EVENT_TABLE()
+
+wxIMPLEMENT_APP(MyApp);
+
+bool MyApp::OnInit()
+{
+    MyFrame *frame = new MyFrame( "PDF Scrivener", wxPoint(50, 50), wxSize(450, 340) );
+    frame->Show( true );
+    return true;
+}
+
+MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
+       : wxFrame(NULL, wxID_ANY, title, pos, size)
+{
+    m_button = new wxButton(this, wxID_OPEN, "Open PDF", wxPoint(10, 10));
+}
+
+void MyFrame::OnOpen(wxCommandEvent& event)
+{
+    wxFileDialog openFileDialog(this, _("Open PDF file"), "", "", "PDF files (*.pdf)|*.pdf", wxFD_OPEN|wxFD_FILE_MUST_EXIST);
+
+    if (openFileDialog.ShowModal() == wxID_CANCEL)
+        return;     // if user cancels
+
+    wxFileInputStream input_stream(openFileDialog.GetPath());
+    if (!input_stream.IsOk())
+    {
+        wxLogError("Cannot open file '%s'.", openFileDialog.GetPath());
+        return;
+    } else{
+        pdfFilePath = openFileDialog.GetPath();
+        std::cout << "PDF file path: " << pdfFilePath << std::endl;
+    }    
 }
 
 /*
-std::string clean_text(const std::string& pdfFilePath) {
-    TextExtraction textExtraction;
-    if (textExtraction.ExtractText(pdfFilePath) != PDFHummus::eSuccess) {
-        std::cout << "PDF FAILED TO LOAD" << std::endl;
-    }
-
-    std::string extractedText = textExtraction.GetResultsAsText(0, TextComposer::eSpacingNone);
-
-    // Define the bad characters
-    std::string bad_chars = "\\/:*?\"<>|";
-
-    // Replace bad characters with underscore
-    for (char& c : extractedText) {
-        if (bad_chars.find(c) != std::string::npos) {
-            c = '_';
-        }
-    }
-
-    // Replace multiple underscores with a single underscore
-    std::regex multiple_underscores("_+");
-    extractedText = std::regex_replace(extractedText, multiple_underscores, "_");
-
-    return extractedText;
-}
-
 int main() {
 
     std::cout << "Starting main()" << std::endl;
 
-    // put your pdf filepath here
-    
-    //  
-    std::string cleanedText = clean_text(pdfFilePath);
-    std::cout << cleanedText << std::endl;
+    // extract text from provided pdf file
+    TextExtraction pdfData;
+    if (pdfData.ExtractText(pdfFilePath) != PDFHummus::eSuccess) {
+        std::cout << "PDF FAILED TO LOAD" << std::endl;
+    } else {
+        std::cout << "PDF LOADED SUCCESSFULLY" << std::endl;
+    }
 
-    std::cout << "Text extraction complete" << std::endl;
+    // extract text data from pdfData object
+    ParsedTextPlacementListList pdfPages = pdfData.textsForPages;
+
+    // make an iterator for the ParsedTextPlacementListList
+    ParsedTextPlacementListList::iterator itPage = pdfPages.begin();
+
+    // for loop that iterates over the pages of the pdf, and extracts the text from each page, and appends it to a vector
+    for(; itPage != pdfPages.end(); ++itPage) {
+        // for each page, create an empty string
+        std::string thisPage;
+
+        // create an iterator for the characters on the page
+        ParsedTextPlacementList::iterator itChar = itPage->begin();
+
+        for(; itChar != itPage->end(); ++itChar) {
+            // for each ParsedTextPlacement object, get the text
+            std::vector<char> thisChar(itChar->text.begin(), itChar->text.end());
+            
+            // append the extracted text to thisPage
+            for (char& c : thisChar) {
+                if (printable.find(c) == std::string::npos) {
+                    std::cout << "INVALID CHARACTER" << std::endl;
+                    bad_chars += c;
+                    thisPage += "WHAT???";
+                    } else{
+                    thisPage += c;
+                    }
+            }
+        }
+        // append the page to our vector
+        extractedText.push_back(thisPage);
+    }
+
+    int pageNumber = 5;
+
+    std::ofstream outFile("output.txt");
+
+    if(outFile.is_open()) {
+        outFile << extractedText[pageNumber];
+        outFile.close();
+    } else {
+        std::cout << "Unable to open file" << std::endl;
+    }
+
+    std::cout << "Finished main()" << std::endl;
+
 
     return 0;
 }
+
 */
