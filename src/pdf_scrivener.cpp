@@ -4,64 +4,77 @@
 #ifndef WX_PRECOMP
     #include <wx/wx.h>
 #endif
-class MyApp: public wxApp
-{
-public:
-    virtual bool OnInit();
-};
-class MyFrame: public wxFrame
-{
-public:
-    MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size);
-private:
-    void OnHello(wxCommandEvent& event);
-    void OnExit(wxCommandEvent& event);
-    void OnAbout(wxCommandEvent& event);
-    wxDECLARE_EVENT_TABLE();
-};
-enum
-{
-    ID_Hello = 1
-};
-wxBEGIN_EVENT_TABLE(MyFrame, wxFrame)
-    EVT_MENU(ID_Hello,   MyFrame::OnHello)
-    EVT_MENU(wxID_EXIT,  MyFrame::OnExit)
-    EVT_MENU(wxID_ABOUT, MyFrame::OnAbout)
-wxEND_EVENT_TABLE()
-wxIMPLEMENT_APP(MyApp);
-bool MyApp::OnInit()
-{
-    MyFrame *frame = new MyFrame( "Hello World", wxPoint(50, 50), wxSize(450, 340) );
-    frame->Show( true );
-    return true;
+#include "TextExtraction.h"
+#include <regex>
+#include <iostream>
+
+std::string printable = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\x0b\x0c";
+std::string pdfFilePath = "./bin/inputs/GoodHeart.pdf";
+
+
+
+int main() {
+    TextExtraction textExtractor;
+
+    // Extract text placements from the PDF
+    if (textExtractor.ExtractTextPlacements(pdfFilePath, 0, -1) != PDFHummus::eSuccess) {
+        std::cerr << "Failed to extract text placements from the PDF file." << std::endl;
+        return 1;
+    }
+
+    // Get the extracted text for each page and print it
+    std::list<ParsedTextPlacementList> textsForPages = textExtractor.GetTextsForPages();
+    int pageNum = 1;
+    for (const auto& pageText : textsForPages) {
+        std::cout << "Page " << pageNum << ":\n";
+        for (const auto& textPlacement : pageText) {
+            std::cout << textPlacement.text << "\n";
+        }
+        std::cout << "\n\n";
+        pageNum++;
+    }
+
+    return 0;
 }
-MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
-        : wxFrame(NULL, wxID_ANY, title, pos, size)
-{
-    wxMenu *menuFile = new wxMenu;
-    menuFile->Append(ID_Hello, "&Hello...\tCtrl-H",
-                     "Help string shown in status bar for this menu item");
-    menuFile->AppendSeparator();
-    menuFile->Append(wxID_EXIT);
-    wxMenu *menuHelp = new wxMenu;
-    menuHelp->Append(wxID_ABOUT);
-    wxMenuBar *menuBar = new wxMenuBar;
-    menuBar->Append( menuFile, "&File" );
-    menuBar->Append( menuHelp, "&Help" );
-    SetMenuBar( menuBar );
-    CreateStatusBar();
-    SetStatusText( "Welcome to wxWidgets!" );
+
+/*
+std::string clean_text(const std::string& pdfFilePath) {
+    TextExtraction textExtraction;
+    if (textExtraction.ExtractText(pdfFilePath) != PDFHummus::eSuccess) {
+        std::cout << "PDF FAILED TO LOAD" << std::endl;
+    }
+
+    std::string extractedText = textExtraction.GetResultsAsText(0, TextComposer::eSpacingNone);
+
+    // Define the bad characters
+    std::string bad_chars = "\\/:*?\"<>|";
+
+    // Replace bad characters with underscore
+    for (char& c : extractedText) {
+        if (bad_chars.find(c) != std::string::npos) {
+            c = '_';
+        }
+    }
+
+    // Replace multiple underscores with a single underscore
+    std::regex multiple_underscores("_+");
+    extractedText = std::regex_replace(extractedText, multiple_underscores, "_");
+
+    return extractedText;
 }
-void MyFrame::OnExit(wxCommandEvent& event)
-{
-    Close( true );
+
+int main() {
+
+    std::cout << "Starting main()" << std::endl;
+
+    // put your pdf filepath here
+    
+    //  
+    std::string cleanedText = clean_text(pdfFilePath);
+    std::cout << cleanedText << std::endl;
+
+    std::cout << "Text extraction complete" << std::endl;
+
+    return 0;
 }
-void MyFrame::OnAbout(wxCommandEvent& event)
-{
-    wxMessageBox( "This is a wxWidgets' Hello world sample",
-                  "About Hello World", wxOK | wxICON_INFORMATION );
-}
-void MyFrame::OnHello(wxCommandEvent& event)
-{
-    wxLogMessage("Hello world from wxWidgets!");
-}
+*/

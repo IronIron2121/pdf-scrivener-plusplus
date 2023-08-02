@@ -26,7 +26,7 @@ include(FetchContent)
 FetchContent_Declare(
   PDFHummus
   GIT_REPOSITORY https://github.com/galkahana/PDF-Writer.git
-  GIT_TAG        4.5
+  GIT_TAG        master
   FIND_PACKAGE_ARGS
 )
 FetchContent_MakeAvailable(PDFHummus)
