@@ -18,10 +18,6 @@ std::string printable = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRS
 std::string pdfFilePath = "./bin/inputs/GoodHeart.pdf";
 std::string bad_chars;
 
-
-#include <wx/wx.h>
-#include <wx/filedlg.h>
-
 class MyApp: public wxApp
 {
 public:
@@ -32,17 +28,7 @@ class MyFrame: public wxFrame
 {
 public:
     MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size);
-
-    void OnOpen(wxCommandEvent& event);
-
-private:
-    wxButton* m_button;
-    wxDECLARE_EVENT_TABLE();
 };
-
-wxBEGIN_EVENT_TABLE(MyFrame, wxFrame)
-    EVT_BUTTON(wxID_OPEN, MyFrame::OnOpen)
-wxEND_EVENT_TABLE()
 
 wxIMPLEMENT_APP(MyApp);
 
@@ -50,21 +36,11 @@ bool MyApp::OnInit()
 {
     MyFrame *frame = new MyFrame( "PDF Scrivener", wxPoint(50, 50), wxSize(450, 340) );
     frame->Show( true );
-    return true;
-}
 
-MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
-       : wxFrame(NULL, wxID_ANY, title, pos, size)
-{
-    m_button = new wxButton(this, wxID_OPEN, "Open PDF", wxPoint(10, 10));
-}
-
-void MyFrame::OnOpen(wxCommandEvent& event)
-{
-    wxFileDialog openFileDialog(this, _("Open PDF file"), "", "", "PDF files (*.pdf)|*.pdf", wxFD_OPEN|wxFD_FILE_MUST_EXIST);
+    wxFileDialog openFileDialog(frame, _("Open PDF file"), "", "", "PDF files (*.pdf)|*.pdf", wxFD_OPEN|wxFD_FILE_MUST_EXIST);
 
     if (openFileDialog.ShowModal() == wxID_CANCEL)
-        return;     // if user cancels
+        return false;     // if user cancels
 
     // get selected pdf
     wxString wxFilePath = openFileDialog.GetPath();
@@ -74,14 +50,14 @@ void MyFrame::OnOpen(wxCommandEvent& event)
     TextExtraction pdfData;
     if (pdfData.ExtractText(pdfFilePath) != PDFHummus::eSuccess) {
         wxLogMessage("Failed to load PDF file");
-        return;
+        return false;
     }
 
     // Get the text of page 5
     ParsedTextPlacementListList pdfPages = pdfData.textsForPages;
     if (pdfPages.size() < 5) {
         wxLogMessage("PDF file has less than 5 pages");
-        return;
+        return false;
     }
     auto page5 = pdfPages.begin();
     std::advance(page5, 4);
@@ -93,6 +69,13 @@ void MyFrame::OnOpen(wxCommandEvent& event)
     }
     // Display the text of page 5
     wxMessageBox(page5Text, "Page 5 Text", wxOK | wxICON_INFORMATION);
+
+    return true;
+}
+
+MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
+       : wxFrame(NULL, wxID_ANY, title, pos, size)
+{
 }
 
 
