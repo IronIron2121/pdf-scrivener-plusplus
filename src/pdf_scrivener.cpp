@@ -1,16 +1,11 @@
-#include <fstream>
-#include <wx/wxprec.h>
-
-// file dialog, filestream
-#include <wx/filedlg.h> 
-#include <wx/wfstream.h>
-
-#ifndef WX_PRECOMP
-    #include <wx/wx.h>
-#endif
+#include <FL/Fl.H>
+#include <FL/Fl_Window.H>
+#include <FL/Fl_Button.H>
+#include <FL/Fl_Native_File_Chooser.H>
+#include <FL/Fl_Output.H>
 #include "TextExtraction.h"
-#include <regex>
-#include <iostream>
+#include <string>
+#include <vector>
 
 // create an empty vector for strings
 std::vector<std::string> extractedText;
@@ -18,128 +13,52 @@ std::string printable = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRS
 std::string pdfFilePath = "./bin/inputs/GoodHeart.pdf";
 std::string bad_chars;
 
-class MyApp: public wxApp
-{
-public:
-    virtual bool OnInit();
-};
+Fl_Output *output;
 
-class MyFrame: public wxFrame
-{
-public:
-    MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size);
-};
+void OpenPDF(Fl_Widget*, void*) {
+    Fl_Native_File_Chooser fnfc;
+    fnfc.title("Open PDF file");
+    fnfc.type(Fl_Native_File_Chooser::BROWSE_FILE);
+    fnfc.filter("PDF\t*.pdf");
+    switch ( fnfc.show() ) {
+        case -1: break; // ERROR
+        case  1: break; // CANCEL
+        default:        // PICKED FILE
+            pdfFilePath = fnfc.filename();
 
-wxIMPLEMENT_APP(MyApp);
-
-bool MyApp::OnInit()
-{
-    MyFrame *frame = new MyFrame( "PDF Scrivener", wxPoint(50, 50), wxSize(450, 340) );
-    frame->Show( true );
-
-    wxFileDialog openFileDialog(frame, _("Open PDF file"), "", "", "PDF files (*.pdf)|*.pdf", wxFD_OPEN|wxFD_FILE_MUST_EXIST);
-
-    if (openFileDialog.ShowModal() == wxID_CANCEL)
-        return false;     // if user cancels
-
-    // get selected pdf
-    wxString wxFilePath = openFileDialog.GetPath();
-    std::string pdfFilePath(wxFilePath.mb_str());
-
-    // extract text from pdf
-    TextExtraction pdfData;
-    if (pdfData.ExtractText(pdfFilePath) != PDFHummus::eSuccess) {
-        wxLogMessage("Failed to load PDF file");
-        return false;
-    }
-
-    // Get the text of page 5
-    ParsedTextPlacementListList pdfPages = pdfData.textsForPages;
-    if (pdfPages.size() < 5) {
-        wxLogMessage("PDF file has less than 5 pages");
-        return false;
-    }
-    auto page5 = pdfPages.begin();
-    std::advance(page5, 4);
-    std::string page5Text;
-    for(; page5 != pdfPages.end(); ++page5) {
-        for (const auto& placement : *page5) {
-            page5Text += placement.text;
-        }
-    }
-    // Display the text of page 5
-    wxMessageBox(page5Text, "Page 5 Text", wxOK | wxICON_INFORMATION);
-
-    return true;
-}
-
-MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
-       : wxFrame(NULL, wxID_ANY, title, pos, size)
-{
-}
-
-
-/*
-int main() {
-
-    std::cout << "Starting main()" << std::endl;
-
-    // extract text from provided pdf file
-    TextExtraction pdfData;
-    if (pdfData.ExtractText(pdfFilePath) != PDFHummus::eSuccess) {
-        std::cout << "PDF FAILED TO LOAD" << std::endl;
-    } else {
-        std::cout << "PDF LOADED SUCCESSFULLY" << std::endl;
-    }
-
-    // extract text data from pdfData object
-    ParsedTextPlacementListList pdfPages = pdfData.textsForPages;
-
-    // make an iterator for the ParsedTextPlacementListList
-    ParsedTextPlacementListList::iterator itPage = pdfPages.begin();
-
-    // for loop that iterates over the pages of the pdf, and extracts the text from each page, and appends it to a vector
-    for(; itPage != pdfPages.end(); ++itPage) {
-        // for each page, create an empty string
-        std::string thisPage;
-
-        // create an iterator for the characters on the page
-        ParsedTextPlacementList::iterator itChar = itPage->begin();
-
-        for(; itChar != itPage->end(); ++itChar) {
-            // for each ParsedTextPlacement object, get the text
-            std::vector<char> thisChar(itChar->text.begin(), itChar->text.end());
-            
-            // append the extracted text to thisPage
-            for (char& c : thisChar) {
-                if (printable.find(c) == std::string::npos) {
-                    std::cout << "INVALID CHARACTER" << std::endl;
-                    bad_chars += c;
-                    thisPage += "WHAT???";
-                    } else{
-                    thisPage += c;
-                    }
+            // extract text from pdf
+            TextExtraction pdfData;
+            if (pdfData.ExtractText(pdfFilePath) != PDFHummus::eSuccess) {
+                output->value("Failed to load PDF file");
+                return;
             }
-        }
-        // append the page to our vector
-        extractedText.push_back(thisPage);
+
+            // Get the text of page 5
+            ParsedTextPlacementListList pdfPages = pdfData.textsForPages;
+            if (pdfPages.size() < 5) {
+                output->value("PDF file has less than 5 pages");
+                return;
+            }
+            auto page5 = pdfPages.begin();
+            std::advance(page5, 4);
+            std::string page5Text;
+            for(; page5 != pdfPages.end(); ++page5) {
+                for (const auto& placement : *page5) {
+                    page5Text += placement.text;
+                }
+            }
+            // Display the text of page 5
+            output->value(page5Text.c_str());
+            break;
     }
-
-    int pageNumber = 5;
-
-    std::ofstream outFile("output.txt");
-
-    if(outFile.is_open()) {
-        outFile << extractedText[pageNumber];
-        outFile.close();
-    } else {
-        std::cout << "Unable to open file" << std::endl;
-    }
-
-    std::cout << "Finished main()" << std::endl;
-
-
-    return 0;
 }
 
-*/
+int main() {
+    Fl_Window *window = new Fl_Window(340,180);
+    Fl_Button *button = new Fl_Button(10, 10, 80, 25, "Open PDF");
+    button->callback(OpenPDF);
+    output = new Fl_Output(10, 45, 320, 130);
+    window->end();
+    window->show();
+    return Fl::run();
+}
