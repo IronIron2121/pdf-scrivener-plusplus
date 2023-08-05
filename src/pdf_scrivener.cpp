@@ -13,7 +13,9 @@
 
 int main() {
     // the pdf we use for testing
-    std::string pdfFilePath = "GoodHeart.pdf";
+    std::string pdfInputs = "bin/inputs/";
+    std::string pdfFileName = "GoodHeart";
+    std::string pdfFilePath = pdfInputs + pdfFileName + ".pdf";
 
     // load the pdf with poppler
     std::unique_ptr<poppler::document> doc(poppler::document::load_from_file(pdfFilePath));
@@ -29,7 +31,7 @@ int main() {
 
         // load current page, then open a .txt file for output
         std::unique_ptr<poppler::page> pg(doc->create_page(i));
-        std::ofstream outer("page" + std::to_string(i) + ".txt");
+        std::ofstream outer("bin/outputs/" + pdfFileName + "page" + std::to_string(i) + ".txt");
 
         // if page is loaded correctly
         if (pg.get()) {
