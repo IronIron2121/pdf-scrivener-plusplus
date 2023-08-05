@@ -1,19 +1,17 @@
-#include <FL/Fl.H>
-#include <FL/Fl_Window.H>
-#include <FL/Fl_Button.H>
-#include <FL/Fl_Native_File_Chooser.H>
-#include <FL/Fl_Output.H>
-#include "TextExtraction.h"
-#include <string>
-#include <vector>
+#include "pdf_scrivener.h"
 
 // create an empty vector for strings
 std::vector<std::string> extractedText;
-std::string printable = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\x0b\x0c";
-std::string pdfFilePath = "./bin/inputs/GoodHeart.pdf";
-std::string bad_chars;
 
+// good characters
+std::string printable = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\x0b\x0c";
+std::string bad_chars; // we'll fill this in with non-printable characters
+
+std::string pdfFilePath;
+// bad characters
 Fl_Output *output;
+
+#include <fstream>
 
 void OpenPDF(Fl_Widget*, void*) {
     Fl_Native_File_Chooser fnfc;
@@ -39,19 +37,37 @@ void OpenPDF(Fl_Widget*, void*) {
                 output->value("PDF file has less than 5 pages");
                 return;
             }
-            auto page5 = pdfPages.begin();
-            std::advance(page5, 4);
-            std::string page5Text;
-            for(; page5 != pdfPages.end(); ++page5) {
-                for (const auto& placement : *page5) {
-                    page5Text += placement.text;
+            auto page2 = pdfPages.begin();
+            std::advance(page2, 2);
+            std::string page2Text;
+
+            // Open file to write bad characters
+            std::ofstream badCharFile("bad_characters.txt");
+
+            for (const auto& placement : *page2) {
+                // if character not in printable, add to bad_chars
+                if (printable.find(placement.text) == std::string::npos) {
+                    bad_chars += placement.text;
+                    badCharFile << placement.text; // Write to file
+                    std::cout << '?';
+                    page2Text += '?';
+
+                } else{
+                    std::cout << placement.text;
+                    page2Text += placement.text;
                 }
             }
+
+            // Close the bad characters file
+            badCharFile.close();
+
+            std::cout << "All done" << std::endl;
             // Display the text of page 5
-            output->value(page5Text.c_str());
+            output->value(page2Text.c_str());
             break;
     }
 }
+
 
 int main() {
     Fl_Window *window = new Fl_Window(340,180);

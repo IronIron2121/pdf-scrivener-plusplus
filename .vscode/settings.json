@@ -58,5 +58,9 @@
         "streambuf": "cpp",
         "cinttypes": "cpp",
         "typeinfo": "cpp"
+    },
+    "cmake.configureSettings": {
+        "CMAKE_GENERATOR": "Unix Makefiles"
     }
+
 }
