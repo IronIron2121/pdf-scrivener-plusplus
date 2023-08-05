@@ -6,7 +6,7 @@ DO YOU HATE LIGATURES LIKE "ﬄ", WHATEVER THE HELL THAT'S SUPPOSED TO MEAN?
 
 THEN THIS IS THE PLACE FOR YOU!!
 
-# notes
+# ```notes```
 
 There was a much longer commit history, but unfortuately I managed to merge a weird branch and delete...all of it, somehow?
 
