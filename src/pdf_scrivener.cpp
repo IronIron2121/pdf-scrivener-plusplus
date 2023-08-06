@@ -1,67 +1,165 @@
-#include <iostream>
+// builtins
+#include <codecvt>
 #include <fstream>
+#include <iostream>
+#include <locale>
+#include <random>
+#include <sstream>
+#include <unordered_map>
+
+// FLTK for GUI stuff
+#include <FL/Fl.H>
+#include <FL/Fl_Box.H>
+#include <FL/Fl_Button.H>
+#include <FL/Fl_File_Chooser.H>
+#include <FL/Fl_Window.H>
+#include <FL/Fl_Multiline_Output.H>
+
+// poppler for pdf parsing
 #include <poppler/cpp/poppler-document.h>
 #include <poppler/cpp/poppler-page.h>
 
-/*
-- i initially added this because I thought we needed it for ligatures
-- turns out you just need to convert to utf-8 when extracting from the page
-- but we're gonna keep this here just in case things get *really* funky
-#include <unicode/unistr.h>  // For icu::UnicodeString
-#include <unicode/ustream.h> // For streaming operators
-*/
+// vector to contain extracted text from pdf
+std::vector<std::string> pageList;
+std::vector<std::string> convList; // after converting for display purposes
 
-int main() {
-    // the pdf we use for testing
-    std::string pdfInputs = "bin/inputs/";
-    std::string pdfFileName = "GoodHeart";
-    std::string pdfFilePath = pdfInputs + pdfFileName + ".pdf";
+// the pdf we use for testing and filepath for directory
+std::string pdfInputs = "bin/inputs/";
+std::string pdfFileName = "GoodHeart";
+std::string pdfFilePath = pdfInputs + pdfFileName + ".pdf";
 
-    // load the pdf with poppler
-    std::unique_ptr<poppler::document> doc(poppler::document::load_from_file(pdfFilePath));
+// list of acceptable characters
+std::string printable = " abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890!@#$%^&*()_+-=[]{};':\\\",./<>?`~|\n";
 
-    // check if the pdf was loaded correctly
-    if (!doc.get()) {
-        std::cerr << "ERROR: Could not load file " << pdfFilePath << std::endl;
-        return 1;
-    }
+// character occurrences
+std::unordered_map<char, int> charOccur;
 
-    // sample pages to check if ligature is working
-    for (int i = 170; i < 180; ++i) {
+// empty list of unacceptable characters
+std::string badChars = "";
 
-        // load current page, then open a .txt file for output
-        std::unique_ptr<poppler::page> pg(doc->create_page(i));
-        std::ofstream outer("bin/outputs/" + pdfFileName + "page" + std::to_string(i) + ".txt");
+// function to load pdfs
+void loadPDF(Fl_Widget* w, void* data) {
+    // open a file chooser dialog
+    const char* thisPDF = fl_file_chooser("Select a PDF", "*.pdf", NULL);
 
-        // if page is loaded correctly
-        if (pg.get()) {
-            // extract page text byes in utf8 encoding
-            poppler::byte_array byteArray = pg->text().to_utf8();
+    // if it's a valid file
+    if (thisPDF) {
+        // print the filename to the terminal
+        std::cout << "Selected PDF: " << thisPDF << std::endl;
 
-            // capture the byte array in a string std::string
-            std::string popplerByteString(byteArray.begin(), byteArray.end());
+        // load PDF with poppler
+        std::unique_ptr<poppler::document> popplerDoc(poppler::document::load_from_file(thisPDF));
 
-            /*
-            // VESTIGIAL - we do not really need this right now. keeping just in case
-            // convert the UTF-8 text to an ICU Unicode (UTF-16) string
-            icu::UnicodeString uText = icu::UnicodeString::fromUTF8(popplerByteString);
+        // if the loaded PDF is valid, then parse it and extract text
+        if (popplerDoc) {
+            // get the total number of pages
+            int numPages = popplerDoc->pages();
 
-            // convert from UTF-16 to UTF-8
-            std::string utf8Text;
-            uText.toUTF8String(utf8Text);
-            */
+            // for every page in the PDF
+            for (int page_dex = 0; page_dex < numPages; ++page_dex) {
+                // initialise a pointer to the beginning of this page
+                std::unique_ptr<poppler::page> pageIt(popplerDoc->create_page(page_dex));
 
-            // write the text to our .txt file
-            outer << popplerByteString;
-        } else {
-            // if page isn't loading then print to terminal
-            std::cerr << "ERROR: Could not load page " << i << std::endl;
+                // if the pointer is valid
+                if (pageIt) {
+                    // extract text data from poppler in UTF-8 encoding
+                    poppler::byte_array byteArray = pageIt->text().to_utf8();
+                    // convert to std::string
+                    std::string text(byteArray.begin(), byteArray.end());
+                    // push to our string-list of pages
+                    pageList.push_back(text);
+                }
+            }
+        } 
+
+        // open .txt file to write to disk (we send hex stuff so it's in UTF-8 encoding)
+        std::ofstream outFile("pageOut.txt");
+        outFile << char(0xEF) << char(0xBB) << char(0xBF);
+
+        std::ofstream badtxt("badChars.txt", std::ios::binary);
+        badtxt << char(0xEF) << char(0xBB) << char(0xBF); 
+        badtxt << "begin bad characters" << '\n' << ' '; 
+
+        // print every non-printable character in the vector
+        // for every page
+        for(int pageIt = 0; pageIt < pageList.size(); ++pageIt) {
+            // for every character in the page
+            bool leadingWhiteSpace = true; // to skip leading whitespace
+            for(int charIt = 0; charIt < pageList[pageIt].size(); ++charIt) {
+                char thisChar = pageList[pageIt][charIt];
+                // if character is a newline, reset leading whitespace 
+                if(leadingWhiteSpace && thisChar == ' ') {
+                    continue;
+                } else if(thisChar == '\n'){
+                    leadingWhiteSpace = true;
+                    outFile << thisChar;
+
+                } else {
+                    leadingWhiteSpace = false;
+                    if(printable.find(thisChar) == std::string::npos) {
+                        // send it to the bad character list if it's not there already
+                        if(badChars.find(thisChar) == std::string::npos) {
+                            badChars += thisChar;
+                            badtxt << thisChar;
+                            badtxt << ' ' << '\n' << ' ';
+                        }
+                    // add to number of character occurrences
+                    charOccur[thisChar]++;
+                    outFile << thisChar;
+                    } else {
+                        // add to number of character occurrences
+                        charOccur[thisChar]++;
+                        outFile << thisChar;
+                    }
+                } 
+            }
         }
-        // close the .txt file
-        outer.close();
+
+        // close .txt files for pages and bad characters
+        outFile.close();
+        badtxt.close(); 
+
+        // create ostream to announce number of bad characters
+        std::ostringstream os;
+        os << "This document has " << badChars.size() << " bad characters:\n\n";
+
+        // loop thru the charOccur map, append each bad character and its num occurrences
+        for(int i = 0; i < badChars.size(); ++i) {
+            os << i << ' ' << badChars[i] << ", with: " << charOccur[badChars[i]] << " occurrences\n";
+        }
+
+        // container for multiline output
+        Fl_Multiline_Output* out = (Fl_Multiline_Output*)data;
+
+        // send bad character notification to the output
+        out->value(os.str().c_str());
+        out->redraw(); // redraw the output
+
+        std::cout << "Processing complete" << std::endl;
+
+    } else {
+        std::cout << "No PDF selected" << std::endl;
     }
+}
 
+int main(int argc, char** argv) {
+    // create container window
+    Fl_Window* win = new Fl_Window(1000, 800, "PDF Scrivener");
 
-    // put this code out of its misery
-    return 0;
+    // button that loads the PDF
+    Fl_Button* btn = new Fl_Button(50, 50, 150, 40, "Load PDF");
+
+    // multiline output for bad characters
+    Fl_Multiline_Output* out = new Fl_Multiline_Output(50, 200, 900, 600, "");
+
+    // make the button do stuff
+    btn->callback(loadPDF, out);  
+
+    // no more widgets
+    win->end();
+    // show everything
+    win->show(argc, argv);
+
+    // start
+    return Fl::run();
 }
