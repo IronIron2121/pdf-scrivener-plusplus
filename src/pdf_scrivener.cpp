@@ -20,6 +20,8 @@
 #include <poppler/cpp/poppler-document.h>
 #include <poppler/cpp/poppler-page.h>
 
+// forward declaration for app container
+class AppWizard;
 
 // vector to contain extracted text from pdf
 std::vector<std::string> pageList;
@@ -44,7 +46,7 @@ std::string badChars = "";
 // together, these two functions help use replace bad characters with user input
 struct ReplacementInfo {
     bool contextual; // is this replacment context-sensitive?
-    char replacement; // what is the replacement character?
+    std::string replacement; // what is the replacement character?
 };
 // map to store the above info for each bad character
 std::unordered_map<char, ReplacementInfo> replacement_dict; // dict as a lover-letter to python
@@ -296,7 +298,7 @@ public:
     AppWizard(int w, int h, const char* title = 0) : Fl_Window(w, h, title){
         wizard = new Fl_Wizard(0, 0, w, h);
         openPage = new OpenPDFPage(0, 0, w, h, "PDF Scrivener - Open PDF");
-        choicePage = new ChoicePage(0, 0, w, h, "PDF Scrivener - Choice Page");
+        choicePage = new ChoicePage(0, 0, w, h, "PDF Scrivener - Choice Page", this);
 
         // add the pages to the wizard
         wizard->add(openPage);
@@ -319,7 +321,7 @@ public:
     }
 
     // iterate current bad character index by 1
-    int upBindex() {
+    void upBindex() {
         this->bindex++;
     }
 
