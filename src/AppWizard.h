@@ -18,6 +18,7 @@ private:
     std::string pdfText; // all of the pdf's initially extracted text
     std::string badChars = ""; // list of bad characters
     int bindex; // current bad character index
+    
 
 public:
     AppWizard(int w, int h, const char* title = 0);
@@ -31,7 +32,9 @@ public:
     
     std::unordered_map<char, int>* getCharOccur(); // gets character occurences
     std::string getConText(int indx, const std::string& pageText); // get context for given bindex
-    std::vector<std::string> getBintexts(char thisBadChar); // a list of contexts for given bindex
+    std::vector<std::string> getBintexts(); // a list of contexts for given bindex
+    std::string getDisplayChar();
+
 
     // utils
     int getCharOccurs(char thisBadChar);

@@ -11,20 +11,22 @@ std::unordered_map<char, ChoicePage::ReplacementInfo> ChoicePage::replacementDic
 
 ChoicePage::ChoicePage(int x, int y, int w, int h, AppWizard* parent, const char* title) : MyPage(x, y, w, h, title) {
     // Display current bad character
-    std::string charText = "Current Character: " + std::string(1, parent->getBadChar());
+    std::string charText = "Current Character: " + std::string(parent->getDisplayChar());
     thisCharLabel = new Fl_Box(x+10, y+10, w-20, 30, charText.c_str());
 
     // Display context for the bad character
-    std::vector<std::string> listOfContexts = parent->getBintexts(parent->getBadChar());
+    std::vector<std::string> listOfContexts = parent->getBintexts();
+    
     // gap between each context
     int yGap = 100;
+    
     // create a box for each context
-    for (int context = 0; context < listOfContexts.size(); context++) {
+    for (int context = 0; context < 3; context++) {
         y = y+yGap;
-        Fl_Box* box = new Fl_Box(x+10, y, w-20, 30, listOfContexts[context].c_str());
+        Fl_Box* box = new Fl_Box(x+10, y, w, 70);
         chartextBoxes.push_back(box);
-        std::cout << "THIS CONTEXT IS: " << listOfContexts[context].c_str() << std::endl;
     }
+
     y = y+yGap;
     // Buttons for actions
     goodifyButton = new Fl_Button(x+10, y, w-20, 40, "Do not replace this character");
@@ -57,7 +59,7 @@ void ChoicePage::goodifyCb(Fl_Widget* w, void* data) {
     // make this character's replacement itself, declare it as non-contextual
     replacementDict[parent->getBadChar()].replacement = parent->getBadChar();
     replacementDict[parent->getBadChar()].contextual = false;
-    std::cout << "Goodified!" << std::endl;
+    std::cout << "replacement: " << replacementDict[parent->getBadChar()].replacement << std::endl;
     nextChar(w, data);}
 
 void ChoicePage::replaceAllCb(Fl_Widget* w, void* data) {
@@ -67,6 +69,7 @@ void ChoicePage::replaceAllCb(Fl_Widget* w, void* data) {
     // replace every instance of this character with the user's input
     replacementDict[parent->getBadChar()].replacement = thisPage->replaceAllInput->value();
     replacementDict[parent->getBadChar()].contextual = false;
+    std::cout << "replacement: " << replacementDict[parent->getBadChar()].replacement << std::endl;
 }
 
 void ChoicePage::contextCb(Fl_Widget* w, void* data) {

@@ -31,6 +31,8 @@ private:
     Fl_Input* replaceAllInput; // input for the above
     Fl_Button* contextButton; // replace based on context
 
+    int numCharBoxes; // number of character boxes
+
     // this object is a child of the prodigious AppWizard
     AppWizard* parent; 
 

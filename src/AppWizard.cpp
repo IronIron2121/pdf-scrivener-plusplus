@@ -50,14 +50,14 @@ std::string AppWizard::getConText(int indx, const std::string& pageText) {
     }
 
     // characters that end a sentence
-    std::vector<char> enders = {' ', '.', '\n'};
+    std::vector<char> enders = {' ', '.', '\n', ','};
 
     // init context span indices
     int leftPointer = indx;
     int rightPointer = indx;
 
     // find the leftmost limit of the context
-    while(!endChecker(pageText[leftPointer], enders) && leftPointer > 0) {
+    while(!endChecker(pageText[leftPointer-1], enders) && leftPointer > 0) {
         leftPointer--;
     }
 
@@ -66,9 +66,31 @@ std::string AppWizard::getConText(int indx, const std::string& pageText) {
         rightPointer++;
     }
     
-    // add the context to the vector and return it
+    // so we can find the position of the bad character in the context
+    int leftDiff = indx - leftPointer;
+
+    std::cout << "Just bad char:\n" << pageText.substr(indx,2) << std::endl;
+
+    // bad character at position:
+    std::string posNotif = "Pos: " + std::to_string(leftDiff+1) + " ";
+
+    // add context to vector and return it
     std::string context = pageText.substr(leftPointer, rightPointer - leftPointer);
-    return context;
+
+    // make a string of spaces the same length as context
+    std::string invisiString(context.size(), '-');
+
+    // add arrow pointing to the bad character
+    if (leftDiff >= 0 && leftDiff < context.size()) {
+        invisiString[leftDiff] = '^';
+    } else {
+        std::cerr << "bad char is out of bounds" << std::endl;
+    }
+
+    // combine and send off
+    std::string combined = posNotif + "\n" + context + "\n" + invisiString;
+    return combined;
+
 }
 
 // get character occurrences of a specific character
@@ -76,13 +98,32 @@ int AppWizard::getCharOccurs(char thisBadChar){
     return charOccur[thisBadChar];
 }
 
-
 // the problem is here
-std::vector<std::string> AppWizard::getBintexts(char thisBadChar) {
+std::string AppWizard::getDisplayChar() {
+    // get the current bad character
+    char realBadChar = badChars[bindex];
+
+    // vars to store the indices of the bad characters
+    std::string outString; // where we'll store context
+
+    // get the context of each bad character
+    std::vector<std::string> contextList;
+
+    int thisDex = pdfText.find(realBadChar, 0);
+
+    if (thisDex == std::string::npos) {
+        return "N/A";
+    } else {
+        std::cout << "thisDex: IT WORKED: " << thisDex << std::endl;
+        std::string displayChar = pdfText.substr(thisDex, 1);
+        return displayChar;
+    }
+}
+
+std::vector<std::string> AppWizard::getBintexts() {
     char realBadChar = badChars[bindex];
     // get whichever is smaller - number of char occurences, or 3
     int numExamples = std::min((charOccur[realBadChar]), 3);
-    std::cout << "numExamples: " << numExamples << std::endl;
 
     // vars to store the indices of the bad characters
     std::vector<int> indices; // where we'll store character indices
@@ -93,7 +134,6 @@ std::vector<std::string> AppWizard::getBintexts(char thisBadChar) {
     for(int i = 0; i < numExamples; i++) {
         // get the index of the next occurrence of the bad character
         int thisDex = pdfText.find(realBadChar, minDex);
-        std::cout << "thisDex: " << thisDex << std::endl;
         // push it to the vector
         indices.push_back(thisDex);
         // set the minimum index to the next index 
@@ -104,11 +144,8 @@ std::vector<std::string> AppWizard::getBintexts(char thisBadChar) {
     std::vector<std::string> contextList;
     for(int i = 0; i < indices.size(); i++) {
         std::string thisContext = getConText(indices[i], pdfText);
-        std::cout << "thisContext: " << i << ' ' << thisContext << std::endl;
         contextList.push_back(thisContext);
     }
-
-    std::cout << "CONTEXTLIST SIZE HERE" << contextList.size() << std::endl;
 
     // return a vector containing the index of the bad character
     return contextList;
@@ -123,35 +160,44 @@ std::string* AppWizard::getPdfText(){
     return &pdfText;
 }
 
-
 bool AppWizard::endChecker(char thisChar, std::vector<char>& enders) {
     // if this character is an ender, return true
     return std::find(enders.begin(), enders.end(), thisChar) != enders.end();
 }
 
+// refresh the values of the choice page when next is pressed
 void AppWizard::refreshVals(void* data) {
     // update bad char display
-    std::string newText = "Current Character: " + std::string(1, this->getBadChar());
-    this->choicePage->getCharLabel()->copy_label(newText.c_str());
+    std::string newText = "Current Character: " + std::string(this->getDisplayChar());
+    std::cout << "new text: " << newText << std::endl;
+
+    Fl_Box *thisCharLabel = this->choicePage->getCharLabel();
+    thisCharLabel->copy_label(newText.c_str());
+
 
     // grab the character context boxes
     std::vector<Fl_Box*> chartextBoxes = this->choicePage->getChartextBoxes();
 
-    // AND THE TROUBLE IS ALSO...HERE!!
-    std::vector<std::string> listOfContexts = this->getBintexts(this->bindex);
+    // get the contexts for the current bad character
+    std::vector<std::string> listOfContexts = this->getBintexts();
 
-    //display list size
-    std::cout << "list size: " << listOfContexts.size() << std::endl;
-    std::cout << "chartextboxes size: " << chartextBoxes.size() << std::endl;
+
+    int listSize = listOfContexts.size();
+    int boxSize = chartextBoxes.size();
+    int listBoxRange = listSize - boxSize;
 
     // update contexts display
-    for (int i = 0; i < listOfContexts.size() && i < chartextBoxes.size(); i++) {
+    for (int i = 0; i < listOfContexts.size(); i++) {
         std::cout << "copying label at index " << i << std::endl;
         std::cout << "label: " << listOfContexts[i].c_str() << std::endl;
         chartextBoxes[i]->copy_label(listOfContexts[i].c_str());
     }
-
-    std::cout << "BINDEX NOW IS EQUAL TO: " << this->bindex << std::endl;
+    // if there's an empty box, fill it with N/A
+    if (listSize < boxSize) {
+        for (int i = listSize; i < boxSize; i++) {
+            chartextBoxes[i]->copy_label("N/A");
+        }
+    }
 }
 
 std::string* AppWizard::getBadChars(){
