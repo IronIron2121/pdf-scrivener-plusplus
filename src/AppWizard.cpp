@@ -4,6 +4,7 @@ AppWizard::AppWizard(int w, int h, const char* title) : Fl_Window(w, h, title) {
     wizard = new Fl_Wizard(0, 0, w, h);
     openPage = new OpenPDFPage(0, 0, w, h, this, "PDF Scrivener - Open PDF");
     choicePage = new ChoicePage(0, 0, w, h, this, "PDF Scrivener - Choice Page");
+    charOccur = {};
 
     pdfText = "";
 
@@ -42,11 +43,10 @@ char AppWizard::getGivenBadChar(int index) {
 }
 
 std::string AppWizard::getConText(int indx, const std::string& pageText) {
+    // if the index is out of bounds, run for the hills and cry because my code is perfect and it's your fault
     if (indx < 0 || indx >= pageText.size()) {
-        std::cout << "bad index. how did this even happen?" << std::endl;
+        std::cout << "bad index with: " << indx << std::endl;
         return "";
-    } else{
-        std::cout << "good index" << std::endl;
     }
 
     // characters that end a sentence
@@ -66,37 +66,34 @@ std::string AppWizard::getConText(int indx, const std::string& pageText) {
         rightPointer++;
     }
     
-    // show the left and right pointers
-    std::cout << "leftPointer: " << leftPointer << std::endl;
-    std::cout << "rightPointer: " << rightPointer << std::endl;
-    // show pagetext length
-    std::cout << "pagetext length: " << pageText.size() << std::endl;
-
-
-
     // add the context to the vector and return it
     std::string context = pageText.substr(leftPointer, rightPointer - leftPointer);
     return context;
 }
 
+// get character occurrences of a specific character
 int AppWizard::getCharOccurs(char thisBadChar){
     return charOccur[thisBadChar];
 }
 
+
+// the problem is here
 std::vector<std::string> AppWizard::getBintexts(char thisBadChar) {
+    char realBadChar = badChars[bindex];
     // get whichever is smaller - number of char occurences, or 3
-    int numExamples = std::min(this->getCharOccurs(thisBadChar), 3);
+    int numExamples = std::min((charOccur[realBadChar]), 3);
     std::cout << "numExamples: " << numExamples << std::endl;
-    std::cout << "thisBadChar: " << thisBadChar << std::endl;
 
     // vars to store the indices of the bad characters
     std::vector<int> indices; // where we'll store character indices
     std::string outString; // where we'll store context
+
     int minDex = 0; // start from 0
 
     for(int i = 0; i < numExamples; i++) {
         // get the index of the next occurrence of the bad character
-        int thisDex = pdfText.find(thisBadChar, minDex);
+        int thisDex = pdfText.find(realBadChar, minDex);
+        std::cout << "thisDex: " << thisDex << std::endl;
         // push it to the vector
         indices.push_back(thisDex);
         // set the minimum index to the next index 
@@ -104,11 +101,14 @@ std::vector<std::string> AppWizard::getBintexts(char thisBadChar) {
     }
 
     // get the context of each bad character
-    std::vector<std::string>contextList;
+    std::vector<std::string> contextList;
     for(int i = 0; i < indices.size(); i++) {
-        std::cout << "adding contexts at index " << i << std::endl;
-        contextList.push_back(getConText(indices[i], pdfText));
+        std::string thisContext = getConText(indices[i], pdfText);
+        std::cout << "thisContext: " << i << ' ' << thisContext << std::endl;
+        contextList.push_back(thisContext);
     }
+
+    std::cout << "CONTEXTLIST SIZE HERE" << contextList.size() << std::endl;
 
     // return a vector containing the index of the bad character
     return contextList;
@@ -119,25 +119,30 @@ void AppWizard::upCharOccur(char thisChar) {
     charOccur[thisChar]++;
 }
 
+std::string* AppWizard::getPdfText(){
+    return &pdfText;
+}
 
 
 bool AppWizard::endChecker(char thisChar, std::vector<char>& enders) {
     // if this character is an ender, return true
-    return (std::find(enders.begin(), enders.end(), thisChar) != enders.end());}
+    return std::find(enders.begin(), enders.end(), thisChar) != enders.end();
+}
 
 void AppWizard::refreshVals(void* data) {
-    std::cout << "refreshing values of display\n" << std::endl;
     // update bad char display
     std::string newText = "Current Character: " + std::string(1, this->getBadChar());
     this->choicePage->getCharLabel()->copy_label(newText.c_str());
 
-    std::cout << "refreshing values of boxes\n" << std::endl;
     // grab the character context boxes
     std::vector<Fl_Box*> chartextBoxes = this->choicePage->getChartextBoxes();
 
-    std::cout << "getting list of contexts" << std::endl;
+    // AND THE TROUBLE IS ALSO...HERE!!
     std::vector<std::string> listOfContexts = this->getBintexts(this->bindex);
-    std::cout << "just got the contexts, with size " << listOfContexts.size() << std::endl;
+
+    //display list size
+    std::cout << "list size: " << listOfContexts.size() << std::endl;
+    std::cout << "chartextboxes size: " << chartextBoxes.size() << std::endl;
 
     // update contexts display
     for (int i = 0; i < listOfContexts.size() && i < chartextBoxes.size(); i++) {
@@ -145,6 +150,8 @@ void AppWizard::refreshVals(void* data) {
         std::cout << "label: " << listOfContexts[i].c_str() << std::endl;
         chartextBoxes[i]->copy_label(listOfContexts[i].c_str());
     }
+
+    std::cout << "BINDEX NOW IS EQUAL TO: " << this->bindex << std::endl;
 }
 
 std::string* AppWizard::getBadChars(){

@@ -3,8 +3,8 @@
 
 // hahahahahahahahahahahahahahahahahahahahahahahahahahahahahahha
 std::string* OpenPDFPage::badChars;
+std::string* OpenPDFPage::pdfStr;
 std::string OpenPDFPage::printable;
-std::string OpenPDFPage::pageStr;
 std::vector<std::string> OpenPDFPage::pageList;
 std::unordered_map<char, int>* OpenPDFPage::charOccur;
 
@@ -15,9 +15,9 @@ OpenPDFPage::OpenPDFPage(int x, int y, int w, int h, AppWizard* parent, const ch
     badOut = new Fl_Multiline_Output(50, 200, 900, 600, "");
 
     printable = " abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890!@#$%^&*()_+-=[]{};':\\\",./<>?`~|\n";
-    pageStr = "";
-    badChars = parent->getBadChars(); // yeahhh I mean we could do pointers for this too but we don't have to so i'm not gonna
-    std::string pageList = "";
+    pageList = {};
+    pdfStr = parent->getPdfText();
+    badChars = parent->getBadChars(); 
     charOccur = parent->getCharOccur();
 
     if(!charOccur) {
@@ -82,31 +82,27 @@ void OpenPDFPage::loadPDF(Fl_Widget* w, void* data) {
                     // if character is a newline, reset leading whitespace 
                     if(leadingWhiteSpace && thisChar == ' ') {
                         continue; // if it's a leading whitespace, skip it
-                    } else if(thisChar == '\n'){
-                        // if it's a newline, reset leading whitespace
-                        leadingWhiteSpace = true;
-                        // add it to the book string and the page string
-                        pageStr += thisChar; 
+                    } else{
+                        *pdfStr += thisChar;
                         pageText += thisChar;
-
-
-                    } else {
-                        // otherwise, it's not a leading whitespace
-                        leadingWhiteSpace = false;
-                        // we add it to the book string whether it's good or bad
-                        pageStr += thisChar; 
-                        pageText += thisChar;
-
-                        // if it's not a printable (good) character
-                        if(printable.find(thisChar) == std::string::npos) {
-                            // if it's not already been added to the bad character list
-                            if(badChars->find(thisChar) == std::string::npos) {
-                                *badChars += thisChar; // add to bad character list
-                            }
-                            parentHere->upCharOccur(thisChar);// add to number of this character's occurrences
+                        if(thisChar == '\n'){
+                            // if it's a newline, reset leading whitespace
+                            leadingWhiteSpace = true;
                         } else {
-                            // if it's a good character, just add to the number of this character's occurrences
-                            parentHere->upCharOccur(thisChar);
+                            // if we're here, it's a non-leading whitepace character
+                            leadingWhiteSpace = false;
+
+                            // if it's not a printable (good) character
+                            if(printable.find(thisChar) == std::string::npos) {
+                                // if it's not already been added to the bad character list
+                                if(badChars->find(thisChar) == std::string::npos) {
+                                    *badChars += thisChar; // add to bad character list
+                                }
+                                parentHere->upCharOccur(thisChar);// add to number of this character's occurrences
+                            } else {
+                                // if it's a good character, just add to the number of this character's occurrences
+                                parentHere->upCharOccur(thisChar);
+                            }
                         }
                     }  
                 }
@@ -121,12 +117,10 @@ void OpenPDFPage::loadPDF(Fl_Widget* w, void* data) {
                 os << i << ' ' << (*badChars)[i] << ", with: " << (*charOccur)[(*badChars)[i]] << " occurrences\n";
             }
 
-
             // send bad character notification to the output
             badHere->value(os.str().c_str());
             badHere->redraw(); // redraw the output
             std::cout << os.str() << std::endl; // print to console
-            std::cout << "Processing complete" << std::endl;
         } else{
             std::cout << "Invalid PDF" << std::endl;
         }

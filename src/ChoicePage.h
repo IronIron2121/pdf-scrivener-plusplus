@@ -31,6 +31,9 @@ private:
     Fl_Input* replaceAllInput; // input for the above
     Fl_Button* contextButton; // replace based on context
 
+    // this object is a child of the prodigious AppWizard
+    AppWizard* parent; 
+
 public:
     ChoicePage(int x, int y, int w, int h,  AppWizard* parent, const char* title = 0);
     

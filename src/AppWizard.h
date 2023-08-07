@@ -27,8 +27,8 @@ public:
     char getBadChar(); // gets the current bad character
     char getGivenBadChar(int index);
     std::string* getBadChars(); // gets the current bad character
-    string AppWizard::getBadChars() {
-
+    std::string* getPdfText(); // gets the pdf text
+    
     std::unordered_map<char, int>* getCharOccur(); // gets character occurences
     std::string getConText(int indx, const std::string& pageText); // get context for given bindex
     std::vector<std::string> getBintexts(char thisBadChar); // a list of contexts for given bindex

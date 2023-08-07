@@ -26,10 +26,11 @@ private:
     Fl_Button* nextBtn; // go to next page button
 
     // you get a static! you get a static! everyone gets a static!
-    static std::string pageStr; // extracted text as string
+    static std::string* pdfStr; // extracted text as string
+    static std::vector<std::string> pageList; // extracted text by page
+
     static std::string *badChars; // list of bad characters
     static std::string printable; // list of "good" characters
-    static std::vector<std::string> pageList; // extracted text by page
     static std::unordered_map<char, int>* charOccur; // a pointer to the map of every char and its occurences
 
     AppWizard* parent; // parent wizard
@@ -37,7 +38,7 @@ private:
     // this is a kind of care-package that contains data we need to access from inside static functions
     // we can't just use callback data because it doesn't accept enough args
     struct PassData {
-        Fl_Multiline_Output* badOut;
+        Fl_Multiline_Output* badOut; 
         AppWizard* parent;
     };
 
