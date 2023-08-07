@@ -1,17 +1,16 @@
 #include "ChoicePage.h"
 #include "AppWizard.h"
 
+
+// these should probably be put in the AppWizard
 struct ReplacementInfo {
     bool contextual; // is this replacement context sensitive?
     std::string replacement; // what is the replacement?
 };
 std::unordered_map<char, ChoicePage::ReplacementInfo> ChoicePage::replacementDict;
 
-ChoicePage::ChoicePage(int x, int y, int w, int h, const char* title, AppWizard* parent) 
+ChoicePage::ChoicePage(int x, int y, int w, int h, AppWizard* parent, const char* title) 
     : MyPage(x, y, w, h, title) {
-        // init replacement info and dictionary
-        
-
         // Display current bad character
         std::string charText = "Current Character: " + std::string(1, parent->getBadChar());
         thisCharLabel = new Fl_Box(x+10, y+10, w-20, 30, charText.c_str());
@@ -19,25 +18,26 @@ ChoicePage::ChoicePage(int x, int y, int w, int h, const char* title, AppWizard*
         // Display context for the bad character
         std::vector<std::string> listOfContexts = parent->getBintexts(parent->getBindex());
         // gap between each context
-        int yGap = 50;
+        int yGap = 100;
         // create a box for each context
         for (int context = 0; context < listOfContexts.size(); context++) {
-            Fl_Box* box = new Fl_Box(x+10, y+yGap, w-20, 30, listOfContexts[context].c_str());
+            y = y+yGap;
+            Fl_Box* box = new Fl_Box(x+10, y, w-20, 30, listOfContexts[context].c_str());
             chartextBoxes.push_back(box);
-            yGap += 40;
+            std::cout << listOfContexts[context].c_str();
         }
-
+        y = y+yGap;
         // Buttons for actions
-        goodifyButton = new Fl_Button(x+10, y+yGap, w-20, 40, "Do not replace this character");
+        goodifyButton = new Fl_Button(x+10, y, w-20, 40, "Do not replace this character");
         goodifyButton->callback(goodifyCb, parent);
 
-        yGap += 50;
-        replaceAllButton = new Fl_Button(x+10, y+yGap, w-20, 40, "Replace all instances of this character with input below");
-        replaceAllInput = new Fl_Input(x+10, y+yGap+25, w-20, 40, "Replacement: ");
-        replaceAllButton->callback(replaceAllCb, parent);
+        y = y+yGap;
+        replaceAllButton = new Fl_Button(x+10, y, w-20, 40, "Replace all instances of this character with input below");
+        replaceAllInput = new Fl_Input(x+10, y+25, w-20, 40, "Replacement: ");
+        replaceAllButton->callback(replaceAllCb, parent);\
 
-        yGap += 50;
-        contextButton = new Fl_Button(x+10, y+yGap, w-20, 40, "Choose a different replacement dependent on character context");
+        y = y+yGap;
+        contextButton = new Fl_Button(x+10, y, w-20, 40, "Choose a different replacement dependent on character context");
         contextButton->callback(contextCb, parent);
 
         end();
@@ -58,6 +58,7 @@ void ChoicePage::goodifyCb(Fl_Widget* w, void* data) {
     // make this character's replacement itself, declare it as non-contextual
     replacementDict[parent->getBadChar()].replacement = parent->getBadChar();
     replacementDict[parent->getBadChar()].contextual = false;
+    std::cout << "Goodified!" << std::endl;
     nextChar(w, data);}
 
 void ChoicePage::replaceAllCb(Fl_Widget* w, void* data) {
@@ -80,9 +81,11 @@ void ChoicePage::nextChar(Fl_Widget* w, void* data) {
     parent->upBindex();
     // if the bad character index is greater than the number of bad characters
     if(parent->getBindex() >= (*parent->getBadChars()).size()) {
+        std::cout << "Going for replacements!" << std::endl;
         // start replacing the bad characters
         doReplacements();
     } else {
+        std::cout << "Refreshing vals...1" << std::endl;
         // otherwise refresh the page values
         parent->refreshVals(data); 
     }

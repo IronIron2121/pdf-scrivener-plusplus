@@ -34,8 +34,16 @@ private:
 
     AppWizard* parent; // parent wizard
 
+    // this is a kind of care-package that contains data we need to access from inside static functions
+    // we can't just use callback data because it doesn't accept enough args
+    struct PassData {
+        Fl_Multiline_Output* badOut;
+        AppWizard* parent;
+    };
+
+
 public:
-    OpenPDFPage(int x, int y, int w, int h, const char* title = 0, AppWizard* parent = nullptr);
+    OpenPDFPage(int x, int y, int w, int h, AppWizard* parent, const char* title = 0);
 
     static void loadPDF(Fl_Widget* w, void* data); // function to load PDF
     static void goToChoicePage(Fl_Widget* w, void* data); // function to go to next page

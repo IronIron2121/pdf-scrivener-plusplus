@@ -32,7 +32,7 @@ private:
     Fl_Button* contextButton; // replace based on context
 
 public:
-    ChoicePage(int x, int y, int w, int h, const char* title = 0, AppWizard* parent = nullptr);
+    ChoicePage(int x, int y, int w, int h,  AppWizard* parent, const char* title = 0);
     
     Fl_Box* getCharLabel();
     std::vector<Fl_Box*> getChartextBoxes();

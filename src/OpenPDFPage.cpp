@@ -8,7 +8,7 @@ std::string OpenPDFPage::pageStr;
 std::vector<std::string> OpenPDFPage::pageList;
 std::unordered_map<char, int>* OpenPDFPage::charOccur;
 
-OpenPDFPage::OpenPDFPage(int x, int y, int w, int h, const char* title, AppWizard* parent) : MyPage(x, y, w, h, title) {
+OpenPDFPage::OpenPDFPage(int x, int y, int w, int h, AppWizard* parent, const char* title) : MyPage(x, y, w, h, title) {
     // button to load, output to display bad characters, and button to go to next page
     loadBtn = new Fl_Button(50, 50, 150, 40, "Open PDF");
     nextBtn = new Fl_Button(250, 50, 150, 40, "Next");
@@ -18,22 +18,32 @@ OpenPDFPage::OpenPDFPage(int x, int y, int w, int h, const char* title, AppWizar
     pageStr = "";
     badChars = parent->getBadChars(); // yeahhh I mean we could do pointers for this too but we don't have to so i'm not gonna
     std::string pageList = "";
-    std::unordered_map<char, int>* charOccur = parent->getCharOccur();
+    charOccur = parent->getCharOccur();
 
     if(!charOccur) {
         std::cout << "charOccur is null" << std::endl;
     } else{
         std::cout << "charOccur is not null" << std::endl;
     }
+
+    PassData* passData = new PassData;
+    passData->badOut = badOut;
+    passData->parent = parent;
     
     // activate buttons
-    loadBtn->callback(loadPDF, badOut);
+    loadBtn->callback(loadPDF, passData);
     nextBtn->callback(goToChoicePage);
 
-    end();  
+    end();
 }
 
 void OpenPDFPage::loadPDF(Fl_Widget* w, void* data) {
+    // grab the stuff we wrapped up for the callback. static cast to contextualise void...
+    PassData* carePackage = static_cast<PassData*>(data);
+    // unpack it into the output and parent 
+    Fl_Multiline_Output* badHere = carePackage->badOut;
+    AppWizard* parentHere = carePackage->parent;
+    
     const char* thisPDF = fl_file_chooser("Select a PDF", "*.pdf", NULL); // open file chooser 
 
     // if it's a valid file
@@ -44,12 +54,9 @@ void OpenPDFPage::loadPDF(Fl_Widget* w, void* data) {
 
         // if the loaded PDF is valid, then parse it and extract text
         if (popplerDoc) {
-            std::cout << "Processing PDF" << std::endl;
             int numPages = (popplerDoc->pages()); // get the number of pages in the PDF
-            std::cout << "Number of pages: " << numPages << std::endl;
             // for every page in the PDF
             for (int page_dex = 0; page_dex < numPages; page_dex++) {
-                std::cout << "Processing page " << page_dex << std::endl;
                 std::unique_ptr<poppler::page> pageIt(popplerDoc->create_page(page_dex)); // create a unique pointer to the page
 
                 // if the pointer is valid
@@ -60,15 +67,12 @@ void OpenPDFPage::loadPDF(Fl_Widget* w, void* data) {
                 }
                 pageIt.reset(); // reset the page pointer
             }
-            std::cout << "Finished Processing PDF" << std::endl;
             // for every page
             for(int pageInt = 0; pageInt < pageList.size(); pageInt++) {
-                std::cout << "Grabbing text from page " << pageInt << std::endl;
                 bool leadingWhiteSpace = true; // to skip leading whitespaces
 
                 // for every character in the page
                 for(int charIt = 0; charIt < pageList[pageInt].size(); charIt++) {
-                    std::cout << "Grabbing character " << charIt << " of "  << pageList[pageInt].size() << std::endl;
                     // initialise a string for the page
                     std::string pageText = "";
                     // grab the character
@@ -77,16 +81,13 @@ void OpenPDFPage::loadPDF(Fl_Widget* w, void* data) {
 
                     // if character is a newline, reset leading whitespace 
                     if(leadingWhiteSpace && thisChar == ' ') {
-                        std::cout << "Leading whitespace" << std::endl;
                         continue; // if it's a leading whitespace, skip it
                     } else if(thisChar == '\n'){
-                        std::cout << "Newline" << std::endl;
                         // if it's a newline, reset leading whitespace
                         leadingWhiteSpace = true;
                         // add it to the book string and the page string
                         pageStr += thisChar; 
                         pageText += thisChar;
-                        std::cout << "Newline";
 
 
                     } else {
@@ -98,18 +99,16 @@ void OpenPDFPage::loadPDF(Fl_Widget* w, void* data) {
 
                         // if it's not a printable (good) character
                         if(printable.find(thisChar) == std::string::npos) {
-                            std::cout << "Bad character: " << thisChar << std::endl;
                             // if it's not already been added to the bad character list
                             if(badChars->find(thisChar) == std::string::npos) {
-                                badChars += thisChar; // add to bad character list
+                                *badChars += thisChar; // add to bad character list
                             }
-                            (*charOccur)[thisChar]++; // add to number of this character's occurrences
+                            parentHere->upCharOccur(thisChar);// add to number of this character's occurrences
                         } else {
-                            std::cout << "Good character: " << thisChar << std::endl;
                             // if it's a good character, just add to the number of this character's occurrences
-                            //(*charOccur)[thisChar]++;
+                            parentHere->upCharOccur(thisChar);
                         }
-                    } 
+                    }  
                 }
                 
             }
@@ -122,12 +121,10 @@ void OpenPDFPage::loadPDF(Fl_Widget* w, void* data) {
                 os << i << ' ' << (*badChars)[i] << ", with: " << (*charOccur)[(*badChars)[i]] << " occurrences\n";
             }
 
-            // container for multiline output
-            Fl_Multiline_Output* badOut = (Fl_Multiline_Output*)data;
 
             // send bad character notification to the output
-            badOut->value(os.str().c_str());
-            badOut->redraw(); // redraw the output
+            badHere->value(os.str().c_str());
+            badHere->redraw(); // redraw the output
             std::cout << os.str() << std::endl; // print to console
             std::cout << "Processing complete" << std::endl;
         } else{

@@ -2,12 +2,10 @@
 
 AppWizard::AppWizard(int w, int h, const char* title) : Fl_Window(w, h, title) {
     wizard = new Fl_Wizard(0, 0, w, h);
-    openPage = new OpenPDFPage(0, 0, w, h, "PDF Scrivener - Open PDF");
-    choicePage = new ChoicePage(0, 0, w, h, "PDF Scrivener - Choice Page", this);
+    openPage = new OpenPDFPage(0, 0, w, h, this, "PDF Scrivener - Open PDF");
+    choicePage = new ChoicePage(0, 0, w, h, this, "PDF Scrivener - Choice Page");
 
-    std::unordered_map<char, int> charOccur; // every char and its occurences
-    charOccur['A']++;
-
+    pdfText = "";
 
     // add the pages to the wizard
     wizard->add(openPage);
@@ -39,9 +37,17 @@ char AppWizard::getBadChar() {
     return badChars[bindex];
 }
 
-std::vector<std::string> AppWizard::getConText(int indx, std::string& pageText) {
-    // initialise vector for context of bad characters
-    std::vector<std::string> conText;
+char AppWizard::getGivenBadChar(int index) {
+    return badChars[index];
+}
+
+std::string AppWizard::getConText(int indx, const std::string& pageText) {
+    if (indx < 0 || indx >= pageText.size()) {
+        std::cout << "bad index. how did this even happen?" << std::endl;
+        return "";
+    } else{
+        std::cout << "good index" << std::endl;
+    }
 
     // characters that end a sentence
     std::vector<char> enders = {' ', '.', '\n'};
@@ -56,18 +62,32 @@ std::vector<std::string> AppWizard::getConText(int indx, std::string& pageText) 
     }
 
     // find the rightmost limit of the context
-    while(!endChecker(pageText[rightPointer], enders) && rightPointer < pageText.size()) {
+    while(!endChecker(pageText[rightPointer], enders) && rightPointer < pageText.size()-1) {
         rightPointer++;
     }
+    
+    // show the left and right pointers
+    std::cout << "leftPointer: " << leftPointer << std::endl;
+    std::cout << "rightPointer: " << rightPointer << std::endl;
+    // show pagetext length
+    std::cout << "pagetext length: " << pageText.size() << std::endl;
+
+
 
     // add the context to the vector and return it
     std::string context = pageText.substr(leftPointer, rightPointer - leftPointer);
-    return conText;
+    return context;
+}
+
+int AppWizard::getCharOccurs(char thisBadChar){
+    return charOccur[thisBadChar];
 }
 
 std::vector<std::string> AppWizard::getBintexts(char thisBadChar) {
     // get whichever is smaller - number of char occurences, or 3
-    int numExamples = std::min(this->charOccur[thisBadChar], 3);
+    int numExamples = std::min(this->getCharOccurs(thisBadChar), 3);
+    std::cout << "numExamples: " << numExamples << std::endl;
+    std::cout << "thisBadChar: " << thisBadChar << std::endl;
 
     // vars to store the indices of the bad characters
     std::vector<int> indices; // where we'll store character indices
@@ -86,27 +106,43 @@ std::vector<std::string> AppWizard::getBintexts(char thisBadChar) {
     // get the context of each bad character
     std::vector<std::string>contextList;
     for(int i = 0; i < indices.size(); i++) {
-        contextList.push_back(getConText(indices[i], pdfText)[0]);
+        std::cout << "adding contexts at index " << i << std::endl;
+        contextList.push_back(getConText(indices[i], pdfText));
     }
 
     // return a vector containing the index of the bad character
     return contextList;
 }
 
+// function to update char occurrences given a sent char
+void AppWizard::upCharOccur(char thisChar) {
+    charOccur[thisChar]++;
+}
+
+
+
 bool AppWizard::endChecker(char thisChar, std::vector<char>& enders) {
     // if this character is an ender, return true
     return (std::find(enders.begin(), enders.end(), thisChar) != enders.end());}
 
 void AppWizard::refreshVals(void* data) {
+    std::cout << "refreshing values of display\n" << std::endl;
     // update bad char display
     std::string newText = "Current Character: " + std::string(1, this->getBadChar());
     this->choicePage->getCharLabel()->copy_label(newText.c_str());
 
+    std::cout << "refreshing values of boxes\n" << std::endl;
+    // grab the character context boxes
     std::vector<Fl_Box*> chartextBoxes = this->choicePage->getChartextBoxes();
 
-    // update contexts display
+    std::cout << "getting list of contexts" << std::endl;
     std::vector<std::string> listOfContexts = this->getBintexts(this->bindex);
+    std::cout << "just got the contexts, with size " << listOfContexts.size() << std::endl;
+
+    // update contexts display
     for (int i = 0; i < listOfContexts.size() && i < chartextBoxes.size(); i++) {
+        std::cout << "copying label at index " << i << std::endl;
+        std::cout << "label: " << listOfContexts[i].c_str() << std::endl;
         chartextBoxes[i]->copy_label(listOfContexts[i].c_str());
     }
 }
