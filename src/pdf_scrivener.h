@@ -1,15 +1,19 @@
-// for the GUI
-#include <FL/Fl.H>
-#include <FL/Fl_Window.H>
-#include <FL/Fl_Button.H>
+#ifndef PDF_SCRIVENER_H
+#define PDF_SCRIVENER_H
+
+// gui
 #include <FL/Fl_Native_File_Chooser.H>
 #include <FL/Fl_Output.H>
-#include <FL/Fl_Multiline_Output.H>
 
-// for PDF manipulation
-#include "TextExtraction.h"
-#include <iostream>
 
-// for text manipulation
+
+// builtins
+#include <unordered_map>
 #include <string>
 #include <vector>
+
+std::vector<std::string> convList; // pageList after fixing chars
+
+
+
+#endif 
