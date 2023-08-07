@@ -14,6 +14,4 @@
 
 std::vector<std::string> convList; // pageList after fixing chars
 
-
-
 #endif 
