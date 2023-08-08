@@ -1,10 +1,20 @@
 #include "AppWizard.h"
 
+std::string AppWizard::accounted;
+std::string AppWizard::printable;
+std::string AppWizard::printablePlus;
+
 AppWizard::AppWizard(int w, int h, const char* title) : Fl_Window(w, h, title) {
     wizard = new Fl_Wizard(0, 0, w, h);
     openPage = new OpenPDFPage(0, 0, w, h, this, "PDF Scrivener - Open PDF");
     choicePage = new ChoicePage(0, 0, w, h, this, "PDF Scrivener - Choice Page");
     charOccur = {};
+
+    localPrintable = printablePlus;
+
+    // initialise val for bad characters
+    badChars = {};
+    badCharsCh = {}; // list of bad characters
 
     pdfText = "";
 
@@ -18,6 +28,10 @@ AppWizard::AppWizard(int w, int h, const char* title) : Fl_Window(w, h, title) {
     // integer to store which bad character we're on
     bindex = 0;
     
+    accounted = "\f\t\v\r";
+    printable = " abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890!@#$%^&*()_+-=[]{};':\\\",./<>?`~|\n";
+    printablePlus = printable + accounted;
+
     // end the wizard
     wizard->end();
 }
@@ -26,20 +40,26 @@ int AppWizard::getBindex() {
     return bindex;
 }
 
-std::unordered_map<char, int>* AppWizard::getCharOccur() {
+std::unordered_map<std::string, int>* AppWizard::getCharOccur() {
     return &charOccur;
 }
 
 void AppWizard::upBindex() {
     this->bindex++;
+    std::cout << "bindex: " << bindex << std::endl;
 }
 
-char AppWizard::getBadChar() {
+std::string AppWizard::getBadChar() {
     return badChars[bindex];
 }
 
-char AppWizard::getGivenBadChar(int index) {
+std::string AppWizard::getGivenBadChar(int index) {
     return badChars[index];
+}
+
+bool AppWizard::endChecker(char thisChar, std::vector<char>& enders) {
+    // if this character is an ender, return true
+    return std::find(enders.begin(), enders.end(), thisChar) != enders.end();
 }
 
 std::string AppWizard::getConText(int indx, const std::string& pageText) {
@@ -94,65 +114,140 @@ std::string AppWizard::getConText(int indx, const std::string& pageText) {
 }
 
 // get character occurrences of a specific character
-int AppWizard::getCharOccurs(char thisBadChar){
+int AppWizard::getCharOccurs(std::string thisBadChar){
     return charOccur[thisBadChar];
 }
 
-// the problem is here
 std::string AppWizard::getDisplayChar() {
-    // get the current bad character
-    char realBadChar = badChars[bindex];
-
-    // vars to store the indices of the bad characters
-    std::string outString; // where we'll store context
-
-    // get the context of each bad character
-    std::vector<std::string> contextList;
-
-    int thisDex = pdfText.find(realBadChar, 0);
-
-    if (thisDex == std::string::npos) {
+    // if there are no bad characters, return N/A
+    if(!badChars.size()) {
+        std::cout << "no bad characters" << std::endl;
         return "N/A";
-    } else {
-        std::cout << "thisDex: IT WORKED: " << thisDex << std::endl;
-        std::string displayChar = pdfText.substr(thisDex, 1);
-        return displayChar;
+    } else if (bindex >= badChars.size()) {
+        std::cout << "bindex out of bounds at getDisplayChar()" << std::endl;
+        return "N/A";
     }
+    std::string realBadChar = badChars[bindex];
+    return realBadChar;
+
 }
 
+
+/*
+// using ICU, find a 
+
+// extract a slice around the bad character
+std::string slice = pageList[pageInt].substr(charIt, 4);
+// convert the slice to a unicode string
+icu::UnicodeString uStr(slice.c_str(), slice.size(), "UTF-8"); 
+// get the first (i.e. bad) character in the unicode string
+UChar32 uChar = uStr.char32At(0);
+
+// convert the unicode char back to a string...
+// extract a UTF8 substring of length (this bad character) from the unicode string
+// ...I know, I'm exhausted too
+std::string backToStr;
+uStr.tempSubString(0, U16_LENGTH(uChar)).toUTF8String(backToStr);
+
+// if it's not already been added to the bad character list
+if(std::find(badChars->begin(), badChars->end(), backToStr) == badChars->end()) {
+badChars->push_back(backToStr); // add to bad character list
+}
+// iterate forwards, past the unicode character
+charIt += U16_LENGTH(uChar) - 1;
+parentHere->upCharOccur(backToStr);// add to number of this character's occurrences
+*/
+
+// check again printable to find non-good characters, then use ICU to check which bad character it is
+// if it's the one that we're looking for, then get the context around it
+
+
 std::vector<std::string> AppWizard::getBintexts() {
-    char realBadChar = badChars[bindex];
-    // get whichever is smaller - number of char occurences, or 3
-    int numExamples = std::min((charOccur[realBadChar]), 3);
+    // if bindex is out of bounds, return an empty vector
+    if (bindex >= badChars.size()) {
+        std::cout << "bindex out of bounds at getBintexts()" << std::endl;
+        return {};
+    } else{
+        // otherwise, get the current bad character
+        std::string realBadChar = badChars[bindex];
+        // get whichever is smaller - number of char occurences, or 3
+        int numExamples = std::min((charOccur[realBadChar]), 3);
 
-    // vars to store the indices of the bad characters
-    std::vector<int> indices; // where we'll store character indices
-    std::string outString; // where we'll store context
+        std::cout << "numExamples: " << numExamples << std::endl;
+        std::cout << "realBadChar: " << realBadChar << std::endl;
+        std::cout << "pdfText size: " << pdfText.size() << std::endl;
 
-    int minDex = 0; // start from 0
+        // vars to store the indices of the bad characters
+        std::vector<int> indices; // where we'll store character indices
+        std::string outString; // where we'll store context
 
-    for(int i = 0; i < numExamples; i++) {
-        // get the index of the next occurrence of the bad character
-        int thisDex = pdfText.find(realBadChar, minDex);
-        // push it to the vector
-        indices.push_back(thisDex);
-        // set the minimum index to the next index 
-        minDex = thisDex + 1;
+        int i = 0; // start from 0
+
+        // try to .find() the bad character in the pdfText
+        int minDex = 0;
+
+        for(int i = 0; i < numExamples; i++) {
+            int thisDex = pdfText.find(realBadChar, minDex);
+            if (thisDex != std::string::npos) {
+                indices.push_back(thisDex);
+                minDex = thisDex + 1;
+            }
+        }
+
+
+        /*
+
+        std::cout << (i < numExamples && i < pdfText.size()) << std::endl;
+        // check pdfText for non-printable characters, use ICU to check which bad character it is if it's the one we're looking for, then save its index
+        while(indices.size() < numExamples && i < pdfText.size()){
+            std::cout << pdfText[i] << std::endl;
+            if (printablePlus.find(pdfText[i]) == std::string::npos){
+                std::cout << "found non-printable character at index: " << i << std::endl;
+                // find rightmost limit of this slice
+                int sliceIt = i; 
+                while (sliceIt < pdfText.size() && printablePlus.find(pdfText[sliceIt]) == std::string::npos ) {
+                    sliceIt++;
+                }
+                // extract a slice around the bad character
+                std::string slice = pdfText.substr(i, sliceIt - i);
+                // convert the slice to a unicode string
+                icu::UnicodeString uStr(slice.c_str(), slice.size(), "UTF-8"); 
+                // get the first (i.e. bad) character in the unicode string
+                UChar32 uChar = uStr.char32At(0);
+
+                // convert the unicode char back to a string...
+                // extract a UTF8 substring of length (this bad character) from the unicode string
+                std::string backToStr;
+                uStr.tempSubString(0, U16_LENGTH(uChar)).toUTF8String(backToStr);
+
+                // if it's the one we're looking for, add its index to our index vector and 
+                if(backToStr == realBadChar) {
+                    std::cout << "found bad char at index: " << i << std::endl;
+                    indices.push_back(i);
+                }
+                // iterate forwards, past the unicode character
+                i += U16_LENGTH(uChar) - 1;
+            } else{
+                // if it's a printable character, just iterate forwards
+                i++;
+            }
+        }
+        */
+
+        // get the context of each bad character
+        std::vector<std::string> contextList;
+        for(int i = 0; i < indices.size(); i++) {
+            std::string thisContext = getConText(indices[i], pdfText);
+            contextList.push_back(thisContext);
+        }
+
+        // return a vector containing the index of the bad character
+        return contextList;
     }
-
-    // get the context of each bad character
-    std::vector<std::string> contextList;
-    for(int i = 0; i < indices.size(); i++) {
-        std::string thisContext = getConText(indices[i], pdfText);
-        contextList.push_back(thisContext);
-    }
-
-    // return a vector containing the index of the bad character
-    return contextList;
 }
 
 // function to update char occurrences given a sent char
-void AppWizard::upCharOccur(char thisChar) {
+void AppWizard::upCharOccur(std::string thisChar) {
     charOccur[thisChar]++;
 }
 
@@ -160,10 +255,7 @@ std::string* AppWizard::getPdfText(){
     return &pdfText;
 }
 
-bool AppWizard::endChecker(char thisChar, std::vector<char>& enders) {
-    // if this character is an ender, return true
-    return std::find(enders.begin(), enders.end(), thisChar) != enders.end();
-}
+
 
 // refresh the values of the choice page when next is pressed
 void AppWizard::refreshVals(void* data) {
@@ -200,7 +292,20 @@ void AppWizard::refreshVals(void* data) {
     }
 }
 
-std::string* AppWizard::getBadChars(){
+std::vector<std::string>* AppWizard::getPdfPages(){
+    return &pdfPages;
+}
+
+void AppWizard::pushToPdfPages(std::string pageText){
+    pdfPages.push_back(pageText);
+}
+
+
+std::vector<std::string>* AppWizard::getBadChars(){
     return &(badChars);
+}
+
+std::string AppWizard::getLocalPrintable() {
+    return localPrintable;
 }
 

@@ -7,7 +7,8 @@ struct ReplacementInfo {
     bool contextual; // is this replacement context sensitive?
     std::string replacement; // what is the replacement?
 };
-std::unordered_map<char, ChoicePage::ReplacementInfo> ChoicePage::replacementDict;
+
+std::unordered_map<std::string, ChoicePage::ReplacementInfo> ChoicePage::replacementDict;
 
 ChoicePage::ChoicePage(int x, int y, int w, int h, AppWizard* parent, const char* title) : MyPage(x, y, w, h, title) {
     // Display current bad character
@@ -16,6 +17,8 @@ ChoicePage::ChoicePage(int x, int y, int w, int h, AppWizard* parent, const char
 
     // Display context for the bad character
     std::vector<std::string> listOfContexts = parent->getBintexts();
+
+    finalString = "";
     
     // gap between each context
     int yGap = 100;
@@ -85,12 +88,45 @@ void ChoicePage::nextChar(Fl_Widget* w, void* data) {
     if(parent->getBindex() >= (*parent->getBadChars()).size()) {
         std::cout << "Going for replacements!" << std::endl;
         // start replacing the bad characters
-        doReplacements();
+        doReplacements(parent);
     } else {
         // otherwise refresh the page values
         parent->refreshVals(data); 
     }
 }
 
-void ChoicePage::doReplacements() {
+void ChoicePage::doReplacements(void* data) {
+    // open a .txt file to write to
+    std::ofstream outFile;
+    outFile.open("output.txt");
+    // go through the book page by page and get replacements by searching in map
+    AppWizard* parent = (AppWizard*)data;
+    std::string printable = parent->getLocalPrintable();
+    std::vector<std::string>* pdfPages = parent->getPdfPages();
+    // for every page in the book
+    for(int page = 0; page < pdfPages->size(); page++) {
+        // grab the page text
+        std::string pageText = (*pdfPages)[page];
+
+        // for every character in the page
+        for(int charIndex = 0; charIndex < pageText.size(); charIndex++) {
+            // grab the character
+            std::string thisChar = std::string(1, pageText[charIndex]);
+            // if this character is printable, skip it
+            if(printable.find(thisChar) != std::string::npos) {
+                continue;
+            } else{
+                // otherwise, replace it with its replacement
+                std::string replacement = replacementDict[thisChar].replacement;
+                pageText.replace(charIndex, 1, replacement);
+            
+        }
+    }
+    // write the page to the file
+    outFile << pageText;
+    // end your long-suffering nightmare
+    outFile.close();
+    }
 }
+
+

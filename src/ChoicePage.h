@@ -8,9 +8,7 @@
 #include <vector>
 #include <string>
 #include <unordered_map>
-
-
-
+#include <fstream>
 
 class AppWizard; // Forward declaration
 
@@ -19,12 +17,14 @@ private:
     Fl_Box* thisCharLabel;
     std::vector<Fl_Box*> chartextBoxes;
 
+    std::string finalString; // final string to be outputted
+
     // combined structure to store and easily access replacement infos during replacement
     struct ReplacementInfo {
         bool contextual; // is this replacement context sensitive?
         std::string replacement; // what is the replacement?
     };
-    static std::unordered_map<char, ReplacementInfo> replacementDict; // replacement info for each bad char
+    static std::unordered_map<std::string, ReplacementInfo> replacementDict; // replacement info for each bad char
     
     Fl_Button* goodifyButton; // don't replace
     Fl_Button* replaceAllButton; // replace everything with input
@@ -46,7 +46,7 @@ public:
     static void replaceAllCb(Fl_Widget* w, void* data); // replace bad char with user input
     static void contextCb(Fl_Widget* w, void* data); // replace bad char contextually
     static void nextChar(Fl_Widget* w, void* data); // go-to next bad character
-    static void doReplacements(); // run all replacements
+    static void doReplacements(void* data); // run all replacements
 };
 
 

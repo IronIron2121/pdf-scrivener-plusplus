@@ -13,6 +13,14 @@
 #include <poppler/cpp/poppler-document.h>
 #include <poppler/cpp/poppler-page.h>
 
+#include <unicode/utypes.h>
+#include <unicode/ustring.h>
+#include <unicode/uchar.h>
+#include <unicode/unistr.h>
+#include <unicode/utf8.h>
+#include <unicode/utf16.h>
+
+
 #include <iostream>
 #include <sstream>
 #include <unordered_map>
@@ -26,12 +34,14 @@ private:
     Fl_Button* nextBtn; // go to next page button
 
     // you get a static! you get a static! everyone gets a static!
-    static std::string* pdfStr; // extracted text as string
-    static std::vector<std::string> pageList; // extracted text by page
+    icu::UnicodeString* uPdfStr; // extracted text as string
+    std::vector<icu::UnicodeString> uPageList; // extracted text by page
 
-    static std::string *badChars; // list of bad characters
-    static std::string printable; // list of "good" characters
-    static std::unordered_map<char, int>* charOccur; // a pointer to the map of every char and its occurences
+    std::vector<icu::UnicodeString>* uBadChars; // list of bad characters
+    icu::UnicodeString uAccounted; // list of "bad" characters that have been accounted for
+    icu::UnicodeString uPrintable; // list of "good" characters
+    icu::UnicodeString uPrintablePlus; // printable + extras
+    std::unordered_map<icu::UnicodeString, int>* uCharOccur; // a pointer to the map of every char and its occurences
 
     AppWizard* parent; // parent wizard
 

@@ -2,11 +2,16 @@
 #include "AppWizard.h"
 
 // hahahahahahahahahahahahahahahahahahahahahahahahahahahahahahha
-std::string* OpenPDFPage::badChars;
+/*
+std::vector<std::string>* OpenPDFPage::badChars;
 std::string* OpenPDFPage::pdfStr;
+std::string OpenPDFPage::accounted;
 std::string OpenPDFPage::printable;
+std::string OpenPDFPage::printablePlus;
+
 std::vector<std::string> OpenPDFPage::pageList;
-std::unordered_map<char, int>* OpenPDFPage::charOccur;
+std::unordered_map<std::string, int>* OpenPDFPage::charOccur;
+*/
 
 OpenPDFPage::OpenPDFPage(int x, int y, int w, int h, AppWizard* parent, const char* title) : MyPage(x, y, w, h, title) {
     // button to load, output to display bad characters, and button to go to next page
@@ -14,13 +19,15 @@ OpenPDFPage::OpenPDFPage(int x, int y, int w, int h, AppWizard* parent, const ch
     nextBtn = new Fl_Button(250, 50, 150, 40, "Next");
     badOut = new Fl_Multiline_Output(50, 200, 900, 600, "");
 
-    printable = " abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890!@#$%^&*()_+-=[]{};':\\\",./<>?`~|\n";
-    pageList = {};
-    pdfStr = parent->getPdfText();
-    badChars = parent->getBadChars(); 
-    charOccur = parent->getCharOccur();
+    uAccounted = icu::UnicodeString::fromUTF8(" \f\t\v\r\n.,:;!?()[]{}<>\"'`");
+    uPrintable = icu::UnicodeString::fromUTF8(" abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890!@#$%^&*()_+-=[]{};':\\\",./<>?`~|\n");
+    uPrintablePlus = uPrintable + uAccounted;
+    uPageList = {};
+    uPdfStr = parent->getPdfText();
+    uBadChars = parent->getBadChars(); 
+    uCharOccur = parent->getCharOccur();
 
-    if(!charOccur) {
+    if(!uCharOccur) {
         std::cout << "charOccur is null" << std::endl;
     } else{
         std::cout << "charOccur is not null" << std::endl;
@@ -83,26 +90,54 @@ void OpenPDFPage::loadPDF(Fl_Widget* w, void* data) {
                     if(leadingWhiteSpace && thisChar == ' ') {
                         continue; // if it's a leading whitespace, skip it
                     } else{
-                        *pdfStr += thisChar;
-                        pageText += thisChar;
                         if(thisChar == '\n'){
+                            *pdfStr += thisChar;
+                            pageText += thisChar;
                             // if it's a newline, reset leading whitespace
                             leadingWhiteSpace = true;
                         } else {
                             // if we're here, it's a non-leading whitepace character
                             leadingWhiteSpace = false;
 
-                            // if it's not a printable (good) character
-                            if(printable.find(thisChar) == std::string::npos) {
-                                // if it's not already been added to the bad character list
-                                if(badChars->find(thisChar) == std::string::npos) {
-                                    *badChars += thisChar; // add to bad character list
+                            // if it's not a printable (good or accounted for) character
+                            if(printablePlus.find(thisChar) == std::string::npos) {
+                                // find the rightmost limit of this context
+                                int contIt = charIt;
+                                while(contIt < pageList[pageInt].size() && printablePlus.find(pageList[pageInt][contIt]) == std::string::npos) {
+                                    contIt++;
                                 }
-                                parentHere->upCharOccur(thisChar);// add to number of this character's occurrences
+                                // extract a slice around the bad character
+                                std::string slice = pageList[pageInt].substr(charIt, contIt);
+                                // convert the slice to a unicode string
+                                icu::UnicodeString uStr(slice.c_str(), slice.size(), "UTF-8"); 
+                                // get the first (i.e. bad) character in the unicode string
+                                UChar32 uChar = uStr.char32At(0);
+
+                                // convert the unicode char back to a string...
+                                // extract a UTF8 substring of length (this bad character) from the unicode string
+                                // ...I know, I'm exhausted too
+                                std::string backToStr;
+                                uStr.tempSubString(0, U16_LENGTH(uChar)).toUTF8String(backToStr);
+
+                                // add it to the pdfStr
+                                *pdfStr += backToStr;
+                                pageText += backToStr;
+
+                                // if it's not already been added to the bad character list
+                                if(std::find(badChars->begin(), badChars->end(), backToStr) == badChars->end()) {
+                                    badChars->push_back(backToStr); // add to bad character list
+                                }
+                                // iterate forwards, past the unicode character
+                                charIt += U16_LENGTH(uChar);
+                                parentHere->upCharOccur(backToStr);// add to number of this character's occurrences
                             } else {
+                                *pdfStr += thisChar;
+                                pageText += thisChar;
+                                std::string thisCharStr(1, thisChar);
                                 // if it's a good character, just add to the number of this character's occurrences
-                                parentHere->upCharOccur(thisChar);
+                                parentHere->upCharOccur(thisCharStr);
                             }
+                            parentHere->pushToPdfPages(pageText);
                         }
                     }  
                 }
@@ -111,6 +146,8 @@ void OpenPDFPage::loadPDF(Fl_Widget* w, void* data) {
             // create ostream to announce number of bad characters
             std::ostringstream os;
             os << "This document has " << badChars->size() << " bad characters:\n\n";
+            // print ascii value of first bad character 
+            std::cout << "ASCII value of the first bad character: " << static_cast<int>((*badChars)[1].front()) << std::endl;
 
             // loop thru the charOccur map, append each bad character and its num occurrences
             for(int i = 0; i < badChars->size(); ++i) {
@@ -132,4 +169,6 @@ void OpenPDFPage::loadPDF(Fl_Widget* w, void* data) {
 void OpenPDFPage::goToChoicePage(Fl_Widget* w, void* data) {
     // tell the wizard to go to the next page
     ((Fl_Wizard*)w->parent()->parent())->next();
+    // refresh the values of the choice page
+    //((AppWizard*)data)->refreshVals(data);
 }
