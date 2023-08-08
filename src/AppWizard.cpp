@@ -7,14 +7,20 @@ AppWizard::AppWizard(int w, int h, const char* title) : Fl_Window(w, h, title) {
     choicePage = new ChoicePage(0, 0, w, h, this, "PDF Scrivener - Choice Page");
     //uCharOccurs = new std::unordered_map<UChar32, int>;
 
-    uSpaces = icu::UnicodeString::fromUTF8(" ");
-    uPrintable = icu::UnicodeString::fromUTF8(" abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890!@#$%^&*()_+-=[]{};':\\\",./<>?`~|\n");
-    uNewLines = icu::UnicodeString::fromUTF8("\n\f\t\v\r");
-    uPrintablePlus = uPrintable + uNewLines + uSpaces;
+    spaces = " ";
+    printable = " abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890!@#$%^&*()_+-=[]{};':\\\",./<>?`~|";
+    newLines = "\n\f\t\v\r";
+    printablePlus = printable + newLines + spaces;
+
+    // run get sets over all of them
+    getSets(uSpaces, spaces);
+    getSets(uPrintable, printable);
+    getSets(uNewLines, newLines);
+    getSets(uPrintablePlus, printablePlus);
 
     // initialise val for bad characters
     uBadChars = icu::UnicodeString::fromUTF8("");
-    badCharsCh = {}; // list of bad characters
+    // badCharsCh = {}; // list of bad characters
 
     // initialise our containers and whatnot
     uPdfText = icu::UnicodeString::fromUTF8("");
@@ -38,25 +44,32 @@ AppWizard::AppWizard(int w, int h, const char* title) : Fl_Window(w, h, title) {
     wizard->end();
 }
 
-int AppWizard::getBindex() {
-    return bindex;
+int32_t* AppWizard::getBindex() {
+    return &bindex;
 }
 
 // returns uSPaces
-std::unordered_set<UChar32> AppWizard::getUSpaces() {
-    return uSpaces;
+std::unordered_set<UChar32>* AppWizard::getUSpaces() {
+    return &uSpaces;
 }
 // returns uNewLines characters
-std::unordered_set<UChar32> AppWizard::getUNewLines() {
-    return uNewLines;
+std::unordered_set<UChar32>* AppWizard::getUNewLines() {
+    return &uNewLines;
 }
 // returns uPrintable characters
-std::unordered_set<UChar32> AppWizard::getUPrintable() {
-    return uPrintable;
+std::unordered_set<UChar32>* AppWizard::getUPrintable() {
+    return &uPrintable;
 }
-std::unordered_set<UChar32> AppWizard::getUPrintablePlus() {
-    return uPrintablePlus;
+std::unordered_set<UChar32>* AppWizard::getUPrintablePlus() {
+    return &uPrintablePlus;
 }
+void AppWizard::getSets(std::unordered_set<UChar32>& set, const std::string& stdStr) {
+    icu::UnicodeString uStr = icu::UnicodeString::fromUTF8(stdStr);
+    for (int32_t i = 0; i < uStr.length(); ++i) {
+        set.insert(uStr.char32At(i));
+    }
+}
+
 
 std::unordered_map<UChar32, int>* AppWizard::getUCharOccurs() {
     return &uCharOccurs;
@@ -76,7 +89,8 @@ void AppWizard::upBindex() {
     std::cout << "bindex: " << bindex << std::endl;
 }
 
-UChar32 AppWizard::getBadChar() {
+UChar32 AppWizard::getBadChar(){
+    std::cerr << "Error: bindex exceeds uBadChars length. bindex: " << bindex << ", uBadChars length: " << uBadChars.length() << std::endl;
     return uBadChars[bindex];
 }
 
@@ -284,6 +298,12 @@ void AppWizard::pushToNewPdfList(icu::UnicodeString pageText){
 }
 // ------------------------------------------------------------------------- //
 
+// get reference to replacement dictionary
+std::unordered_map<UChar32, ReplacementInfo>* AppWizard::getReplacementDict(){
+    return &replacementDict;
+}
+
+
 // functions for replacement choices
 void AppWizard::goodifyRep(){
     // non-contextual, and its replacement is itself
@@ -306,7 +326,7 @@ void AppWizard::echoReplacement(){
 }
 
 icu::UnicodeString* AppWizard::getUBadChars(){
-    return &(uBadChars);
+    return &uBadChars;
 }
 
 void AppWizard::doReplacements() {
@@ -331,11 +351,11 @@ void AppWizard::doReplacements() {
             UChar32 thisChar = pageText.char32At(charIndex);
 
             // if this char is printable
-            if (uPrintable.indexOf(thisChar) != -1) {
+            if (uPrintable.find(thisChar) != uPrintable.end()) {
                 // simply copy over and move over by its size
                 modText += thisChar;
                 charIndex += U16_LENGTH(thisChar);  // Move by the length of the character
-            } else if (uNewLines.indexOf(thisChar) != -1) {
+            } else if (uNewLines.find(thisChar) != uNewLines.end()) {
                 // if it's a newline-like character, just add a newline
                 UChar32 replacement = u'\n';
                 modText += replacement;

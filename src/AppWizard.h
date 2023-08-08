@@ -3,6 +3,7 @@
 
 #include "FL/Fl_Window.H"
 #include "FL/Fl_Wizard.H"
+#include "ReplacementInfo.h"
 #include "OpenPDFPage.h"
 #include "ChoicePage.h"
 #include <vector>
@@ -18,45 +19,56 @@ private:
 
     std::unordered_map<UChar32, int> uCharOccurs; // a pointer to the map of every char and its occurences
 
-    std::vector<char> badCharsCh; // list of bad characters
+    // std::vector<char> badCharsCh; // list of bad characters
 
     icu::UnicodeString uBadChars; // list of bad characters
-    int bindex; // current bad character index
 
     icu::UnicodeString uPdfText; // initially extracted text as one long string
     icu::UnicodeString newPdfText; // cleaned extracted text as one long string
     std::vector<icu::UnicodeString> uPdfList; // initially extracted text, page by page
     std::vector<icu::UnicodeString> newPdfList; // cleaned extracted text, page by page
 
-    std::unordered_set<UChar32> uSpaces; // list of "bad" characters that have been uAccounted for
+    std::string spaces; // list of "good" characters
+    std::string printable; // list of "good" characters
+    std::string printablePlus; // uPrintable + extras
+    std::string newLines; // list of new line characters
+
+    std::unordered_set<UChar32> uSpaces; // list of "good" characters
     std::unordered_set<UChar32> uPrintable; // list of "good" characters
     std::unordered_set<UChar32> uPrintablePlus; // uPrintable + extras
     std::unordered_set<UChar32> uNewLines; // list of new line characters
 
+
     // combined structure to store and easily access replacement infos during replacement
-    struct ReplacementInfo {
-        bool contextual; // is this replacement context sensitive?
-        std::string replacement; // what is the replacement?
-    };
+
     std::unordered_map<UChar32, ReplacementInfo> replacementDict; // replacement info for each bad char
 
 public:
     AppWizard(int w, int h, const char* title = 0);
 
+    int32_t bindex; // current bad character index
+
+
     // getter methods
-    int getBindex(); // returns current bad character index
+    int32_t* getBindex(); // returns current bad character index
     void upBindex(); // increment bindex
-    std::string getDisplayChar();
+
+    // get replacement dictionary
+    std::unordered_map<UChar32, ReplacementInfo>* getReplacementDict(); 
+    // initialise the check sets
+    void getSets(std::unordered_set<UChar32>& set, const std::string& stdStr);
+
+    std::string getDisplayChar(); // get the character to display on choice page
 
     UChar32 getBadChar(); // gets the current bad character
     icu::UnicodeString getGivenBadChar(int index); // gets bad char given index
     std::string getConText(int indx, const icu::UnicodeString& pageText); // get context for given bindex
 
-    std::unordered_set<UChar32> getUSpaces();
-    std::unordered_set<UChar32> getUNewLines();
-    std::unordered_set<UChar32> getUPrintable();
-    std::unordered_set<UChar32> getUPrintablePlus();
-    std::unordered_set<UChar32> getLocalPrintable();
+    std::unordered_set<UChar32>* getUSpaces();
+    std::unordered_set<UChar32>* getUNewLines();
+    std::unordered_set<UChar32>* getUPrintable();
+    std::unordered_set<UChar32>* getUPrintablePlus();
+    std::unordered_set<UChar32>* getLocalPrintable();
 
     icu::UnicodeString* getUPdfText(); // gets the initial pdf text (single string)
     void pushToUPdfText(icu::UnicodeString pageText); // push to it
@@ -88,7 +100,8 @@ public:
     // utils
     bool endChecker(UChar32 thisChar, const icu::UnicodeString& enders); // check if a char is an ender
     void refreshVals(); // refresh the values of the choice page when next is pressed
-    std::pair<int32_t,int32_t> getPointers(int indx, const icu::UnicodeString& pageText, const int32_t thisPageLength); // get pointers for context
+     // get pointers for context
+    std::pair<int32_t,int32_t> getPointers(int indx, const icu::UnicodeString& pageText, const int32_t thisPageLength);
     void doReplacements();
 };
 

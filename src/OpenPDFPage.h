@@ -41,10 +41,10 @@ private:
     std::vector<icu::UnicodeString>* newPdfListHere; // cleaned extracted text, page by page
 
     icu::UnicodeString* uBadChars; // list of bad characters
-    std::unordered_set<UChar32> uSpaces; // list of "bad" characters that have been uAccounted for
-    std::unordered_set<UChar32> uPrintable; // list of "good" characters
-    std::unordered_set<UChar32> uPrintablePlus; // uPrintable + extras
-    std::unordered_set<UChar32> uNewLines; // list of new line characters
+    std::unordered_set<UChar32>* uSpaces; // list of "bad" characters that have been uAccounted for
+    std::unordered_set<UChar32>* uPrintable; // list of "good" characters
+    std::unordered_set<UChar32>* uPrintablePlus; // uPrintable + extras
+    std::unordered_set<UChar32>* uNewLines; // list of new line characters
 
     std::unordered_map<UChar32, int>* uCharOccurs; // a pointer to the map of every char and its occurences
 
@@ -52,7 +52,7 @@ private:
 
     void processPDFDoc(); // function to process pdfs
     void processPageText(const icu::UnicodeString& pageText); // process a single page of doc
-    void processChar(UChar32 currentChar, bool leadingWhiteSpace, int32_t charIt); // process a single char of page
+    void processChar(UChar32 currentChar, bool& leadingWhiteSpace, int32_t charIt); // process a single char of page
     bool isPrintable(UChar32 currentChar); // check if char is printable / "good"
     void makeOutput(Fl_Multiline_Output* badHere); // print output to console
 

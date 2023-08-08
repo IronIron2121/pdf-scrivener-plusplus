@@ -10,6 +10,16 @@
 #include <unordered_map>
 #include <fstream>
 
+#include <unicode/utypes.h>
+#include <unicode/ustring.h>
+#include <unicode/uchar.h>
+#include <unicode/unistr.h>
+#include <unicode/utf8.h>
+#include <unicode/utf16.h>
+#include "ReplacementInfo.h"
+
+
+
 class AppWizard; // Forward declaration
 
 class ChoicePage : public MyPage {
@@ -19,6 +29,26 @@ private:
 
     std::string finalString; // final string to be outputted
 
+    int32_t* bindexHere; // bad char index from parent
+
+    icu::UnicodeString* uBadCharsHere; // list of bad characters from parent
+
+    void refreshVals(); // refresh display values
+
+    // pointer to wizard dictionary
+    // combined structure to store and easily access replacement infos during replacement
+    std::string getDisplayChar();
+    void doReplacements();
+
+    bool endChecker(UChar32 thisChar, const icu::UnicodeString& enders);
+    std::pair<int32_t,int32_t> ChoicePage::getPointers(int indx, const icu::UnicodeString& pageText, const int32_t thisPageLength){
+
+
+
+
+
+    std::unordered_map<UChar32, ReplacementInfo>* replacementDictHere; // replacement info for each bad char
+    
     Fl_Button* goodifyButton; // don't replace
     Fl_Button* replaceAllButton; // replace everything with input
     Fl_Input* replaceAllInput; // input for the above

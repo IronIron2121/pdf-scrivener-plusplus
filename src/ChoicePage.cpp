@@ -3,11 +3,18 @@
 
 ChoicePage::ChoicePage(int x, int y, int w, int h, AppWizard* parent, const char* title) : MyPage(x, y, w, h, title) {
     // Display current bad character
-    std::string charText = "Current Character: " + (parent->getDisplayChar());
+    std::string displayChar = parent->getDisplayChar();
+    std::string charText = "Current Character: " + displayChar;
     thisCharLabel = new Fl_Box(x+10, y+10, w-20, 30, charText.c_str());
+
 
     // Display context for the bad character
     std::vector<std::string> listOfContexts = parent->getBintexts();
+
+    bindexHere = parent->getBindex();
+    uBadCharsHere = parent->getUBadChars();
+    replacementDictHere = parent->getReplacementDict();
+
 
     finalString = "";
     
@@ -75,12 +82,35 @@ void ChoicePage::activateChoiceClick(Fl_Widget* w, void* data){
     }
 }
 
+std::string ChoicePage::getDisplayChar() {
+    // get the bad character
+    UChar32 badChar = (*uBadCharsHere)[*bindexHere];
+
+    // convert it to a unicode string
+    icu::UnicodeString badCharU(badChar);
+
+    // convert that to a std::string
+    std::string badCharStr;
+    badCharU.toUTF8String(badCharStr);
+
+    // return the std::string
+    return badCharStr;
+}
+
 void ChoicePage::goodifyCb() { 
     // make this character's replacement itself, declare it as non-contextual
-    parent->goodifyRep();
-    parent->echoReplacement();
+    std::cout << "bindexHere: " << *bindexHere << std::endl;
+    
+    // i apologise sincerely for this. there was no other way
+    // non-contextual replacement
+    ((*replacementDictHere)[*bindexHere]).contextual = false;
+
+    // replacement is the character itself
+    std::string repStr = getDisplayChar();
+    ((*replacementDictHere)[*bindexHere]).replacement = repStr;
     nextChar();
 }
+
 
 void ChoicePage::replaceAllCb() {
     // replace every instance of this character with the user's input
@@ -94,14 +124,159 @@ void ChoicePage::contextCb() {
 
 void ChoicePage::nextChar() {
     // increment the bad character index
-    parent->upBindex();
+    (*bindexHere)++;
+    std::cout << "bindexHere Next Char: " << *bindexHere << std::endl;
+
     // if the bad character index is greater than the number of bad characters
-    if(parent->getBindex() >= parent->getUBadChars()->length()) {
+    if(*bindexHere >= (*uBadCharsHere).length()) {
         std::cout << "Going for replacements!" << std::endl;
         // start replacing the bad characters
-        this->parent->doReplacements();
+        doReplacements();
     } else {
         // otherwise refresh the page values
-        this->parent->refreshVals(); 
+        refreshVals(); 
+    }
+}
+
+void ChoicePage::doReplacements(){
+
+}
+
+void ChoicePage::refreshVals() {
+    // update bad char display
+    std::string newText = "Current Character: " + std::string(this->getDisplayChar());
+    std::cout << "new text: " << newText << std::endl;
+
+    Fl_Box *thisCharLabel = getCharLabel();
+    thisCharLabel->copy_label(newText.c_str());
+
+
+    // grab the character context boxes
+    std::vector<Fl_Box*> chartextBoxes = getChartextBoxes();
+
+    // get the contexts for the current bad character
+    std::vector<std::string> listOfContexts = parent->getBintexts();
+
+    int listSize = listOfContexts.size();
+    int boxSize = chartextBoxes.size();
+    int listBoxRange = listSize - boxSize;
+
+    // update contexts display
+    for (int i = 0; i < listOfContexts.size(); i++) {
+        std::cout << "copying label at index " << i << std::endl;
+        std::cout << "label: " << listOfContexts[i].c_str() << std::endl;
+        chartextBoxes[i]->copy_label(listOfContexts[i].c_str());
+    }
+    // if there's an empty box, fill it with N/A
+    if (listSize < boxSize) {
+        for (int i = listSize; i < boxSize; i++) {
+            chartextBoxes[i]->copy_label("N/A");
+        }
+    }
+}
+
+bool ChoicePage::endChecker(UChar32 thisChar, const icu::UnicodeString& enders) {
+    // if this character is an ender, return true
+    return enders.indexOf(thisChar) != -1;
+}
+std::pair<int32_t,int32_t> ChoicePage::getPointers(int indx, const icu::UnicodeString& pageText, const int32_t thisPageLength){
+    // characters that end a sentence
+    icu::UnicodeString enders = u" .,\n";
+    // init context span indices
+    int32_t leftPointer = indx;
+    int32_t rightPointer = indx;
+    // find the leftmost limit of the context
+    while(!endChecker(pageText.charAt(leftPointer-1), enders) && leftPointer > 0) {
+        leftPointer--;
+    }
+    // find the rightmost limit of the context
+    while(!endChecker(pageText[rightPointer], enders) && rightPointer < thisPageLength-1) {
+        rightPointer++;
+    }
+
+    // make them into a pair and return
+    std::pair<int32_t,int32_t> this_out = std::make_pair(leftPointer, rightPointer);
+    return this_out;
+}
+std::string ChoicePage::getConText(int indx, const icu::UnicodeString& pageText) {
+    int32_t thisPageLength = pageText.length();
+
+    if (indx < 0 || indx >= thisPageLength) {
+        std::cout << "bad index with: " << indx << std::endl;
+        return "N/A";
+    }
+
+    // get the pointers for this run and assign them
+    std::pair<int32_t,int32_t> pointers = getPointers(indx, pageText, thisPageLength);
+    int32_t leftPointer = pointers.first;
+    int32_t rightPointer = pointers.second;
+
+    // get the relative position of the bad character
+    int32_t leftDiff = indx - leftPointer;
+    // bad character at position:
+    icu::UnicodeString posNotif = "Pos: ";
+    icu::UnicodeString strNumber = icu::UnicodeString::fromUTF8(std::to_string(leftDiff + 1));
+    posNotif += strNumber;
+    posNotif += " ";
+
+    // get the context and make a string to underline it
+    icu::UnicodeString context = pageText.tempSubString(leftPointer, rightPointer - leftPointer);
+    icu::UnicodeString invisiString(context.length(), '-');
+
+    // add arrow pointing to the bad character
+    if (leftDiff >= 0 && leftDiff < context.length()) {
+        invisiString.setCharAt(leftDiff, '^');
+    } else {
+        std::cerr << "bad char is out of bounds" << std::endl;
+    }
+
+    // combine, convert to std::string, and return
+    icu::UnicodeString combined = posNotif + "\n" + context + "\n" + invisiString;
+    std::string combinedStr;
+    combined.toUTF8String(combinedStr);
+
+    return combinedStr;
+}
+std::vector<std::string> ChoicePage::getBintexts() {
+    // if bindex is out of bounds, return an empty vector
+    if (bindex >= uBadChars.length()) {
+        std::cout << "bindex out of bounds at getBintexts()" << std::endl;
+        return {};
+    } else{
+        // otherwise, get the current bad character
+        UChar32 realBadChar = uBadChars[bindex];
+        // get whichever is number is smaller - number of char occurences, or 3
+        int numExamples = std::min(uCharOccurs[realBadChar], 3);
+
+        // debugging prints
+        std::cout << "numExamples: " << numExamples << std::endl;
+        std::cout << "realBadChar: " << realBadChar << std::endl;
+        std::cout << "pdfText size: " << uPdfText.length() << std::endl;
+
+        // vars to store the indices of the bad characters
+        std::vector<int32_t> indices; // where we'll store character indices
+
+        // try to .find() the bad character in the pdfText - starting from char 0
+        int32_t minDex = 0;
+        for(int i = 0; i < numExamples; i++) {
+            // try to find the next occurrence of this character
+            int32_t thisDex = uPdfText.indexOf(realBadChar, minDex);
+
+            // if we found it, add it to the list of indices
+            if (thisDex != std::string::npos) {
+                indices.push_back(thisDex);
+                minDex = thisDex + 1;
+            }
+        }
+
+        // get the context of each bad character
+        std::vector<std::string> contextList;
+        for(int i = 0; i < indices.size(); i++) {
+            std::string thisContext = getConText(indices[i], uPdfText);
+            contextList.push_back(thisContext);
+        }
+
+        // return a vector containing the index of the bad character
+        return contextList;
     }
 }

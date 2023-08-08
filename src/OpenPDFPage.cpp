@@ -112,19 +112,18 @@ void OpenPDFPage::processPageText(const icu::UnicodeString& uPageText) {
         processChar(uChar, leadingWhiteSpace, charIt);
     }
 }
-void OpenPDFPage::processChar(UChar32 uChar, bool leadingWhiteSpace, int32_t charIt) {
+void OpenPDFPage::processChar(UChar32 uChar, bool& leadingWhiteSpace, int32_t charIt) {
     // if character is a space
-    if(leadingWhiteSpace && uSpaces.indexOf(uChar) != -1){
+    if(leadingWhiteSpace && (*uSpaces).find(uChar) != (*uSpaces).end()){
         // just skip
         return;
-
-    } else if(uNewLines.indexOf(uChar) != -1){
+    } else if((*uNewLines).find(uChar) != (*uNewLines).end()){
         // if it's a newline-like, just add a new line
         *newPdfTextHere += icu::UnicodeString("\n", "UTF-8");
         (*newPdfListHere).back() += icu::UnicodeString("\n", "UTF-8");
         leadingWhiteSpace = true;
         
-    } else if (uPrintable.indexOf(uChar) != -1) {
+    } else if ((*uPrintable).find(uChar) != (*uPrintable).end()) {
         // if it's a good character, just add it to the string
         leadingWhiteSpace = false;
         *newPdfTextHere += uChar;
@@ -133,6 +132,11 @@ void OpenPDFPage::processChar(UChar32 uChar, bool leadingWhiteSpace, int32_t cha
     } else {
         // if it's a bad character, add to its occurrences, add it to the string, and the list
         leadingWhiteSpace = false;
+        // if we haven't see it yet, add it to the list of bad characters
+        if((*uCharOccurs).find(uChar) == (*uCharOccurs).end()){
+            (*uBadChars) += uChar;
+        }
+
         (*uCharOccurs)[uChar] += 1;
         *newPdfTextHere += uChar;
         (*newPdfListHere).back() += uChar;
@@ -143,7 +147,7 @@ void OpenPDFPage::processChar(UChar32 uChar, bool leadingWhiteSpace, int32_t cha
 
 void OpenPDFPage::makeOutput(Fl_Multiline_Output* badHere) {
     // start output message
-    std::string outputMessage = "Bad characters found:\n";
+    std::string outputMessage = std::to_string(uCharOccurs->size()) + " bad characters found:\n";
 
     // error handling 
     if(uCharOccurs) {
