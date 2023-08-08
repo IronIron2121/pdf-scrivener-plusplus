@@ -51,9 +51,8 @@ void ChoicePage::goodifyCb(Fl_Widget* w, void* data) {
     // show em who's daddy
     AppWizard* parent = (AppWizard*)data;
     // make this character's replacement itself, declare it as non-contextual
-    replacementDict[parent->getBadChar()].replacement = parent->getBadChar();
-    replacementDict[parent->getBadChar()].contextual = false;
-    std::cout << "replacement: " << replacementDict[parent->getBadChar()].replacement << std::endl;
+    parent->goodifyRep();
+    std::cout << "replacement: " << parent->replacementDict[parent->getBadChar()].replacement << std::endl;
     nextChar(w, data);}
 
 void ChoicePage::replaceAllCb(Fl_Widget* w, void* data) {

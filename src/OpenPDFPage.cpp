@@ -114,15 +114,12 @@ void OpenPDFPage::processChar(UChar32 uChar, bool leadingWhiteSpace) {
         parent->upUCharOccur(uChar);
         *uPdfText += uChar;
     }
-
-    // TODO: Add the rest of the logic for handling characters here
-    // This includes checking if it's uPrintable, handling bad characters, updating occurrences, etc.
+    // finish this off, lololol
 }
 
+
 void OpenPDFPage::makeOutput(Fl_Multiline_Output* badHere) {
-    // TODO: Add logic to build the output message similar to what you had in the original function
-    // This includes looping through bad characters, getting their occurrences, etc.
-    // Finally, set the message to badHere and display it.
+    // add code here to make and display output message
 }
 // --------------------
 // --------------------

@@ -33,14 +33,12 @@ private:
     icu::UnicodeString uPrintablePlus; // uPrintable + extras
     icu::UnicodeString uNewLines; // list of new line characters
 
-    std::unordered_map<std::string, ReplacementInfo> replacementDict; // replacement info for each bad char
-
-
     // combined structure to store and easily access replacement infos during replacement
     struct ReplacementInfo {
         bool contextual; // is this replacement context sensitive?
         std::string replacement; // what is the replacement?
     };
+    std::unordered_map<UChar32, ReplacementInfo> replacementDict; // replacement info for each bad char
 
 public:
     AppWizard(int w, int h, const char* title = 0);
@@ -50,8 +48,8 @@ public:
     void upBindex(); // increment bindex
     std::string getDisplayChar();
 
-    icu::UnicodeString getBadChar(); // gets the current bad character
-    icu::UnicodeString getGivenBadChar(int index);
+    UChar32 getBadChar(); // gets the current bad character
+    icu::UnicodeString getGivenBadChar(int index); // gets bad char given index
     std::string getConText(int indx, const icu::UnicodeString& pageText); // get context for given bindex
 
     icu::UnicodeString getUSpaces();
@@ -79,10 +77,18 @@ public:
     int getUCharOccur(UChar32 thisBadChar); // get the occurrences of a single character
     void upUCharOccur(UChar32 thisUChar); // increment the occurrence of a single character
 
+    // functions for character replacement
+    // functions for replacement choices
+    void goodifyRep();
+    void replaceAllRep(UChar32 replacementChar);
+    void contextualRep();
+
     // utils
     bool endChecker(UChar32 thisChar, const icu::UnicodeString& enders); // check if a char is an ender
     void refreshVals(void* data); // refresh the values of the choice page when next is pressed
     std::pair<int32_t,int32_t> getPointers(int indx, const icu::UnicodeString& pageText, const int32_t thisPageLength); // get pointers for context
 };
+
+
 
 #endif // APPWIZARD_H

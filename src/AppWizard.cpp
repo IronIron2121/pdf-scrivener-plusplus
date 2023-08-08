@@ -22,6 +22,8 @@ AppWizard::AppWizard(int w, int h, const char* title) : Fl_Window(w, h, title) {
     uPdfList = {};
     newPdfList = {};
 
+    replacementDict = {};
+
     // add the pages to the wizard
     wizard->add(openPage);
     wizard->add(choicePage);
@@ -71,7 +73,7 @@ void AppWizard::upBindex() {
     std::cout << "bindex: " << bindex << std::endl;
 }
 
-icu::UnicodeString AppWizard::getBadChar() {
+UChar32 AppWizard::getBadChar() {
     return uBadChars[bindex];
 }
 
@@ -281,6 +283,24 @@ void AppWizard::pushToNewPdfList(icu::UnicodeString pageText){
 }
 // ------------------------------------------------------------------------- //
 
+// functions for replacement choices
+void AppWizard::goodifyRep(){
+    // non-contextual, and its replacement is itself
+    replacementDict[getBadChar()].contextual = false;
+    replacementDict[getBadChar()].replacement = getBadChar();   
+}
+
+void AppWizard::replaceAllRep(UChar32 replacementChar){
+    // non-contextual, and its replacement is given value
+    replacementDict[getBadChar()].contextual = false;
+    replacementDict[getBadChar()].replacement = replacementChar; 
+    
+}
+void AppWizard::contextualRep(){
+    replacementDict[getBadChar()].contextual = false;
+// TODO: CONTEXTUAL REPLACEMENT
+//    replacementDict[getBadChar()].replacement = ();    
+}
 
 
 icu::UnicodeString* AppWizard::getUBadChars(){
