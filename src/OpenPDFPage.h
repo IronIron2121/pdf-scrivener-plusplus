@@ -34,29 +34,34 @@ private:
     Fl_Button* nextBtn; // go to next page button
 
     // you get a static! you get a static! everyone gets a static!
-    icu::UnicodeString* uPdfStr; // extracted text as string
-    std::vector<icu::UnicodeString> uPageList; // extracted text by page
+    icu::UnicodeString* uPdfText; // initially extracted text as one long string
+    icu::UnicodeString* newPdfText; // cleaned extracted text as one long string
+    std::vector<icu::UnicodeString>* uPdfList; // initially extracted text, page by page
+    std::vector<icu::UnicodeString>* newPdfList; // cleaned extracted text, page by page
 
-    std::vector<icu::UnicodeString>* uBadChars; // list of bad characters
-    icu::UnicodeString uAccounted; // list of "bad" characters that have been accounted for
+    icu::UnicodeString* uBadChars; // list of bad characters
+    icu::UnicodeString uSpaces; // list of "bad" characters that have been uAccounted for
     icu::UnicodeString uPrintable; // list of "good" characters
-    icu::UnicodeString uPrintablePlus; // printable + extras
-    std::unordered_map<icu::UnicodeString, int>* uCharOccur; // a pointer to the map of every char and its occurences
+    icu::UnicodeString uPrintablePlus; // uPrintable + extras
+    icu::UnicodeString uNewLines; // list of new line characters
+
+    std::unordered_map<UChar32, int>* uCharOccurs; // a pointer to the map of every char and its occurences
 
     AppWizard* parent; // parent wizard
 
-    // this is a kind of care-package that contains data we need to access from inside static functions
-    // we can't just use callback data because it doesn't accept enough args
-    struct PassData {
-        Fl_Multiline_Output* badOut; 
-        AppWizard* parent;
-    };
+    void processPDFDoc(); // function to process pdfs
+    void processPageText(const icu::UnicodeString& pageText); // process a single page of doc
+    void processChar(UChar32 currentChar, bool leadingWhiteSpace); // process a single char of page
+    bool isPrintable(UChar32 currentChar); // check if char is printable / "good"
+    void makeOutput(Fl_Multiline_Output* badHere); // print output to console
 
+    static void activateLoad(Fl_Widget* w, void* data); // trampoline
 
 public:
     OpenPDFPage(int x, int y, int w, int h, AppWizard* parent, const char* title = 0);
 
-    static void loadPDF(Fl_Widget* w, void* data); // function to load PDF
+    void loadPDFDoc(); // function to load pdfs
     static void goToChoicePage(Fl_Widget* w, void* data); // function to go to next page
+
 };
 #endif

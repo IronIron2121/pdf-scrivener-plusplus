@@ -1,18 +1,9 @@
 #include "ChoicePage.h"
 #include "AppWizard.h"
 
-
-// !!!!! these should probably be put in the AppWizard !!!!!!
-struct ReplacementInfo {
-    bool contextual; // is this replacement context sensitive?
-    std::string replacement; // what is the replacement?
-};
-
-std::unordered_map<std::string, ChoicePage::ReplacementInfo> ChoicePage::replacementDict;
-
 ChoicePage::ChoicePage(int x, int y, int w, int h, AppWizard* parent, const char* title) : MyPage(x, y, w, h, title) {
     // Display current bad character
-    std::string charText = "Current Character: " + std::string(parent->getDisplayChar());
+    std::string charText = "Current Character: " + (parent->getDisplayChar());
     thisCharLabel = new Fl_Box(x+10, y+10, w-20, 30, charText.c_str());
 
     // Display context for the bad character
@@ -101,7 +92,7 @@ void ChoicePage::doReplacements(void* data) {
     outFile.open("output.txt");
     // go through the book page by page and get replacements by searching in map
     AppWizard* parent = (AppWizard*)data;
-    std::string printable = parent->getLocalPrintable();
+    std::string uPrintable = parent->getLocalPrintable();
     std::vector<std::string>* pdfPages = parent->getPdfPages();
     // for every page in the book
     for(int page = 0; page < pdfPages->size(); page++) {
@@ -112,8 +103,8 @@ void ChoicePage::doReplacements(void* data) {
         for(int charIndex = 0; charIndex < pageText.size(); charIndex++) {
             // grab the character
             std::string thisChar = std::string(1, pageText[charIndex]);
-            // if this character is printable, skip it
-            if(printable.find(thisChar) != std::string::npos) {
+            // if this character is uPrintable, skip it
+            if(uPrintable.find(thisChar) != std::string::npos) {
                 continue;
             } else{
                 // otherwise, replace it with its replacement

@@ -1,22 +1,26 @@
 #include "AppWizard.h"
 
-std::string AppWizard::accounted;
-std::string AppWizard::printable;
-std::string AppWizard::printablePlus;
 
 AppWizard::AppWizard(int w, int h, const char* title) : Fl_Window(w, h, title) {
     wizard = new Fl_Wizard(0, 0, w, h);
     openPage = new OpenPDFPage(0, 0, w, h, this, "PDF Scrivener - Open PDF");
     choicePage = new ChoicePage(0, 0, w, h, this, "PDF Scrivener - Choice Page");
-    charOccur = {};
+    //uCharOccurs = new std::unordered_map<UChar32, int>;
 
-    localPrintable = printablePlus;
+    uSpaces = icu::UnicodeString::fromUTF8(" ");
+    uPrintable = icu::UnicodeString::fromUTF8("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890!@#$%^&*()_+-=[]{};':\\\",./<>?`~|\n");
+    uNewLines = icu::UnicodeString::fromUTF8("\n\f\t\v\r");
+    uPrintablePlus = uPrintable + uNewLines + uSpaces;
 
     // initialise val for bad characters
-    badChars = {};
+    uBadChars = icu::UnicodeString::fromUTF8("");
     badCharsCh = {}; // list of bad characters
 
-    pdfText = "";
+    // initialise our containers and whatnot
+    uPdfText = icu::UnicodeString::fromUTF8("");
+    newPdfText = icu::UnicodeString::fromUTF8("");
+    uPdfList = {};
+    newPdfList = {};
 
     // add the pages to the wizard
     wizard->add(openPage);
@@ -27,10 +31,6 @@ AppWizard::AppWizard(int w, int h, const char* title) : Fl_Window(w, h, title) {
 
     // integer to store which bad character we're on
     bindex = 0;
-    
-    accounted = "\f\t\v\r";
-    printable = " abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890!@#$%^&*()_+-=[]{};':\\\",./<>?`~|\n";
-    printablePlus = printable + accounted;
 
     // end the wizard
     wizard->end();
@@ -40,204 +40,143 @@ int AppWizard::getBindex() {
     return bindex;
 }
 
-std::unordered_map<std::string, int>* AppWizard::getCharOccur() {
-    return &charOccur;
+// returns uSPaces
+icu::UnicodeString AppWizard::getUSpaces() {
+    return uSpaces;
 }
+// returns uNewLines characters
+icu::UnicodeString AppWizard::getUNewLines() {
+    return uNewLines;
+}
+// returns uPrintable characters
+icu::UnicodeString AppWizard::getUPrintable() {
+    return uPrintable;
+}
+
+icu::UnicodeString AppWizard::getUPrintablePlus() {
+    return uPrintablePlus;
+}
+
+std::unordered_map<UChar32, int>* AppWizard::getUCharOccurs() {
+    return &(uCharOccurs);
+}
+// get character occurrences of a specific character
+int AppWizard::getUCharOccur(UChar32 thisBadChar){
+    return uCharOccurs[thisBadChar];
+}
+
 
 void AppWizard::upBindex() {
     this->bindex++;
     std::cout << "bindex: " << bindex << std::endl;
 }
 
-std::string AppWizard::getBadChar() {
-    return badChars[bindex];
+icu::UnicodeString AppWizard::getBadChar() {
+    return uBadChars[bindex];
 }
 
-std::string AppWizard::getGivenBadChar(int index) {
-    return badChars[index];
+icu::UnicodeString AppWizard::getGivenBadChar(int index) {
+    return uBadChars[index];
 }
 
-bool AppWizard::endChecker(char thisChar, std::vector<char>& enders) {
+bool AppWizard::endChecker(UChar32 thisChar, const icu::UnicodeString& enders) {
     // if this character is an ender, return true
-    return std::find(enders.begin(), enders.end(), thisChar) != enders.end();
+    return enders.indexOf(thisChar) != -1;
 }
-
-std::string AppWizard::getConText(int indx, const std::string& pageText) {
-    // if the index is out of bounds, run for the hills and cry because my code is perfect and it's your fault
-    if (indx < 0 || indx >= pageText.size()) {
-        std::cout << "bad index with: " << indx << std::endl;
-        return "";
-    }
-
+std::pair<int32_t,int32_t> AppWizard::getPointers(int indx, const icu::UnicodeString& pageText, const int32_t thisPageLength){
     // characters that end a sentence
-    std::vector<char> enders = {' ', '.', '\n', ','};
-
+    icu::UnicodeString enders = u" .,\n";
     // init context span indices
-    int leftPointer = indx;
-    int rightPointer = indx;
-
+    int32_t leftPointer = indx;
+    int32_t rightPointer = indx;
     // find the leftmost limit of the context
-    while(!endChecker(pageText[leftPointer-1], enders) && leftPointer > 0) {
+    while(!endChecker(pageText.charAt(leftPointer-1), enders) && leftPointer > 0) {
         leftPointer--;
     }
-
     // find the rightmost limit of the context
-    while(!endChecker(pageText[rightPointer], enders) && rightPointer < pageText.size()-1) {
+    while(!endChecker(pageText[rightPointer], enders) && rightPointer < thisPageLength-1) {
         rightPointer++;
     }
-    
-    // so we can find the position of the bad character in the context
-    int leftDiff = indx - leftPointer;
 
-    std::cout << "Just bad char:\n" << pageText.substr(indx,2) << std::endl;
+    // make them into a pair and return
+    std::pair<int32_t,int32_t> this_out = std::make_pair(leftPointer, rightPointer);
+    return this_out;
+}
+std::string AppWizard::getConText(int indx, const icu::UnicodeString& pageText) {
+    int32_t thisPageLength = pageText.length();
 
+    if (indx < 0 || indx >= thisPageLength) {
+        std::cout << "bad index with: " << indx << std::endl;
+        return "N/A";
+    }
+
+    // get the pointers for this run and assign them
+    std::pair<int32_t,int32_t> pointers = getPointers(indx, pageText, thisPageLength);
+    int32_t leftPointer = pointers.first;
+    int32_t rightPointer = pointers.second;
+
+    // get the relative position of the bad character
+    int32_t leftDiff = indx - leftPointer;
     // bad character at position:
-    std::string posNotif = "Pos: " + std::to_string(leftDiff+1) + " ";
+    icu::UnicodeString posNotif = "Pos: ";
+    icu::UnicodeString strNumber = icu::UnicodeString::fromUTF8(std::to_string(leftDiff + 1));
+    posNotif += strNumber;
+    posNotif += " ";
 
-    // add context to vector and return it
-    std::string context = pageText.substr(leftPointer, rightPointer - leftPointer);
-
-    // make a string of spaces the same length as context
-    std::string invisiString(context.size(), '-');
+    // get the context and make a string to underline it
+    icu::UnicodeString context = pageText.tempSubString(leftPointer, rightPointer - leftPointer);
+    icu::UnicodeString invisiString(context.length(), '-');
 
     // add arrow pointing to the bad character
-    if (leftDiff >= 0 && leftDiff < context.size()) {
-        invisiString[leftDiff] = '^';
+    if (leftDiff >= 0 && leftDiff < context.length()) {
+        invisiString.setCharAt(leftDiff, '^');
     } else {
         std::cerr << "bad char is out of bounds" << std::endl;
     }
 
-    // combine and send off
-    std::string combined = posNotif + "\n" + context + "\n" + invisiString;
-    return combined;
+    // combine, convert to std::string, and return
+    icu::UnicodeString combined = posNotif + "\n" + context + "\n" + invisiString;
+    std::string combinedStr;
+    combined.toUTF8String(combinedStr);
 
+    return combinedStr;
 }
-
-// get character occurrences of a specific character
-int AppWizard::getCharOccurs(std::string thisBadChar){
-    return charOccur[thisBadChar];
-}
-
-std::string AppWizard::getDisplayChar() {
-    // if there are no bad characters, return N/A
-    if(!badChars.size()) {
-        std::cout << "no bad characters" << std::endl;
-        return "N/A";
-    } else if (bindex >= badChars.size()) {
-        std::cout << "bindex out of bounds at getDisplayChar()" << std::endl;
-        return "N/A";
-    }
-    std::string realBadChar = badChars[bindex];
-    return realBadChar;
-
-}
-
-
-/*
-// using ICU, find a 
-
-// extract a slice around the bad character
-std::string slice = pageList[pageInt].substr(charIt, 4);
-// convert the slice to a unicode string
-icu::UnicodeString uStr(slice.c_str(), slice.size(), "UTF-8"); 
-// get the first (i.e. bad) character in the unicode string
-UChar32 uChar = uStr.char32At(0);
-
-// convert the unicode char back to a string...
-// extract a UTF8 substring of length (this bad character) from the unicode string
-// ...I know, I'm exhausted too
-std::string backToStr;
-uStr.tempSubString(0, U16_LENGTH(uChar)).toUTF8String(backToStr);
-
-// if it's not already been added to the bad character list
-if(std::find(badChars->begin(), badChars->end(), backToStr) == badChars->end()) {
-badChars->push_back(backToStr); // add to bad character list
-}
-// iterate forwards, past the unicode character
-charIt += U16_LENGTH(uChar) - 1;
-parentHere->upCharOccur(backToStr);// add to number of this character's occurrences
-*/
-
-// check again printable to find non-good characters, then use ICU to check which bad character it is
-// if it's the one that we're looking for, then get the context around it
-
-
 std::vector<std::string> AppWizard::getBintexts() {
     // if bindex is out of bounds, return an empty vector
-    if (bindex >= badChars.size()) {
+    if (bindex >= uBadChars.length()) {
         std::cout << "bindex out of bounds at getBintexts()" << std::endl;
         return {};
     } else{
         // otherwise, get the current bad character
-        std::string realBadChar = badChars[bindex];
-        // get whichever is smaller - number of char occurences, or 3
-        int numExamples = std::min((charOccur[realBadChar]), 3);
+        UChar32 realBadChar = uBadChars[bindex];
+        // get whichever is number is smaller - number of char occurences, or 3
+        int numExamples = std::min(uCharOccurs[realBadChar], 3);
 
+        // debugging prints
         std::cout << "numExamples: " << numExamples << std::endl;
         std::cout << "realBadChar: " << realBadChar << std::endl;
-        std::cout << "pdfText size: " << pdfText.size() << std::endl;
+        std::cout << "pdfText size: " << uPdfText.length() << std::endl;
 
         // vars to store the indices of the bad characters
-        std::vector<int> indices; // where we'll store character indices
-        std::string outString; // where we'll store context
+        std::vector<int32_t> indices; // where we'll store character indices
 
-        int i = 0; // start from 0
-
-        // try to .find() the bad character in the pdfText
-        int minDex = 0;
-
+        // try to .find() the bad character in the pdfText - starting from char 0
+        int32_t minDex = 0;
         for(int i = 0; i < numExamples; i++) {
-            int thisDex = pdfText.find(realBadChar, minDex);
+            // try to find the next occurrence of this character
+            int32_t thisDex = uPdfText.indexOf(realBadChar, minDex);
+
+            // if we found it, add it to the list of indices
             if (thisDex != std::string::npos) {
                 indices.push_back(thisDex);
                 minDex = thisDex + 1;
             }
         }
 
-
-        /*
-
-        std::cout << (i < numExamples && i < pdfText.size()) << std::endl;
-        // check pdfText for non-printable characters, use ICU to check which bad character it is if it's the one we're looking for, then save its index
-        while(indices.size() < numExamples && i < pdfText.size()){
-            std::cout << pdfText[i] << std::endl;
-            if (printablePlus.find(pdfText[i]) == std::string::npos){
-                std::cout << "found non-printable character at index: " << i << std::endl;
-                // find rightmost limit of this slice
-                int sliceIt = i; 
-                while (sliceIt < pdfText.size() && printablePlus.find(pdfText[sliceIt]) == std::string::npos ) {
-                    sliceIt++;
-                }
-                // extract a slice around the bad character
-                std::string slice = pdfText.substr(i, sliceIt - i);
-                // convert the slice to a unicode string
-                icu::UnicodeString uStr(slice.c_str(), slice.size(), "UTF-8"); 
-                // get the first (i.e. bad) character in the unicode string
-                UChar32 uChar = uStr.char32At(0);
-
-                // convert the unicode char back to a string...
-                // extract a UTF8 substring of length (this bad character) from the unicode string
-                std::string backToStr;
-                uStr.tempSubString(0, U16_LENGTH(uChar)).toUTF8String(backToStr);
-
-                // if it's the one we're looking for, add its index to our index vector and 
-                if(backToStr == realBadChar) {
-                    std::cout << "found bad char at index: " << i << std::endl;
-                    indices.push_back(i);
-                }
-                // iterate forwards, past the unicode character
-                i += U16_LENGTH(uChar) - 1;
-            } else{
-                // if it's a printable character, just iterate forwards
-                i++;
-            }
-        }
-        */
-
         // get the context of each bad character
         std::vector<std::string> contextList;
         for(int i = 0; i < indices.size(); i++) {
-            std::string thisContext = getConText(indices[i], pdfText);
+            std::string thisContext = getConText(indices[i], uPdfText);
             contextList.push_back(thisContext);
         }
 
@@ -246,14 +185,35 @@ std::vector<std::string> AppWizard::getBintexts() {
     }
 }
 
-// function to update char occurrences given a sent char
-void AppWizard::upCharOccur(std::string thisChar) {
-    charOccur[thisChar]++;
+
+std::string AppWizard::getDisplayChar() {
+    // if there are no bad characters, return N/A
+    if(!uBadChars.length()) {
+        std::cout << "no bad characters" << std::endl;
+        return "N/A";
+    } else if (bindex >= uBadChars.length()) {
+        std::cout << "bindex out of bounds at getDisplayChar()" << std::endl;
+        return "N/A";
+    }
+    // grab the character
+    UChar32 realBadChar = uBadChars[bindex];
+    // convert it to a unicode string
+    icu::UnicodeString charToUString(realBadChar);
+    // convert that to a std string, then return
+    std::string uStringToStdString;
+    charToUString.toUTF8String(uStringToStdString);
+    return uStringToStdString;
+
 }
 
-std::string* AppWizard::getPdfText(){
-    return &pdfText;
+
+
+// function to update char occurrence given a sent character
+void AppWizard::upUCharOccur(UChar32 thisUChar) {
+    uCharOccurs[thisUChar]++;
 }
+
+
 
 
 
@@ -273,7 +233,6 @@ void AppWizard::refreshVals(void* data) {
     // get the contexts for the current bad character
     std::vector<std::string> listOfContexts = this->getBintexts();
 
-
     int listSize = listOfContexts.size();
     int boxSize = chartextBoxes.size();
     int listBoxRange = listSize - boxSize;
@@ -292,20 +251,38 @@ void AppWizard::refreshVals(void* data) {
     }
 }
 
-std::vector<std::string>* AppWizard::getPdfPages(){
-    return &pdfPages;
+// -- GET AND MODIFY FUNCTIONS FOR INITIAL AND PROCESSED PDF -- //
+icu::UnicodeString* AppWizard::getUPdfText(){
+    return &uPdfText;
 }
-
-void AppWizard::pushToPdfPages(std::string pageText){
-    pdfPages.push_back(pageText);
+void AppWizard::pushToUPdfText(icu::UnicodeString pageText){
+    uPdfText += pageText;
 }
-
-
-std::vector<std::string>* AppWizard::getBadChars(){
-    return &(badChars);
+icu::UnicodeString* AppWizard::getNewPdfText(){
+    return &newPdfText;
 }
-
-std::string AppWizard::getLocalPrintable() {
-    return localPrintable;
+void AppWizard::pushToNewPdfText(icu::UnicodeString pageText){
+    newPdfText += pageText;
 }
+// ------------------------------------------------------------- //
 
+// -- GET AND MODIFY FUNCTIONS FOR INITIAL AND PROCESSED PDF, PAGE BY PAGE -- //
+std::vector<icu::UnicodeString>* AppWizard::getUPdfList(){
+    return &uPdfList;
+}
+void AppWizard::pushToUPdfList(icu::UnicodeString pageText){
+    uPdfList.push_back(pageText);
+}
+std::vector<icu::UnicodeString>* AppWizard::getNewPdfList(){
+    return &newPdfList;
+}
+void AppWizard::pushToNewPdfList(icu::UnicodeString pageText){
+    newPdfList.push_back(pageText);
+}
+// ------------------------------------------------------------------------- //
+
+
+
+icu::UnicodeString* AppWizard::getUBadChars(){
+    return &(uBadChars);
+}
