@@ -82,11 +82,14 @@ public:
     void goodifyRep();
     void replaceAllRep(UChar32 replacementChar);
     void contextualRep();
+    void echoReplacement(); // debugging
+
 
     // utils
     bool endChecker(UChar32 thisChar, const icu::UnicodeString& enders); // check if a char is an ender
-    void refreshVals(void* data); // refresh the values of the choice page when next is pressed
+    void refreshVals(); // refresh the values of the choice page when next is pressed
     std::pair<int32_t,int32_t> getPointers(int indx, const icu::UnicodeString& pageText, const int32_t thisPageLength); // get pointers for context
+    void doReplacements();
 };
 
 

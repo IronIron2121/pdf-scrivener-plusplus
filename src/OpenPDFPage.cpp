@@ -37,7 +37,7 @@ OpenPDFPage::OpenPDFPage(int x, int y, int w, int h, AppWizard* parent, const ch
     end();
 }
 
-static void activateLoad(Fl_Widget* w, void* data) {
+void activateLoad(Fl_Widget* w, void* data) {
     OpenPDFPage* instance = static_cast<OpenPDFPage*>(data);
     instance->loadPDFDoc();
 }

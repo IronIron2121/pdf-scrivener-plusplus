@@ -22,18 +22,29 @@ ChoicePage::ChoicePage(int x, int y, int w, int h, AppWizard* parent, const char
     }
 
     y = y+yGap;
+
+    choicePack* pack0 = new choicePack;
+    pack0->choice = 0;
+    pack0->instance = this;
+    choicePack* pack1 = new choicePack;
+    pack1->choice = 1;
+    pack1->instance = this;
+    choicePack* pack2 = new choicePack;
+    pack2->choice = 2;
+    pack2->instance = this;
+
     // Buttons for actions
     goodifyButton = new Fl_Button(x+10, y, w-20, 40, "Do not replace this character");
-    goodifyButton->callback(goodifyCb, parent);
+    goodifyButton->callback(activateChoiceClick, pack0);
 
     y = y+yGap;
     replaceAllButton = new Fl_Button(x+10, y, w-20, 40, "Replace all instances of this character with input below");
     replaceAllInput = new Fl_Input(x+10, y+25, w-20, 40, "Replacement: ");
-    replaceAllButton->callback(replaceAllCb, parent);\
+    replaceAllButton->callback(activateChoiceClick, pack1);\
 
     y = y+yGap;
     contextButton = new Fl_Button(x+10, y, w-20, 40, "Choose a different replacement dependent on character context");
-    contextButton->callback(contextCb, parent);
+    contextButton->callback(activateChoiceClick, pack2);
 
     end();
 }
@@ -47,76 +58,50 @@ std::vector<Fl_Box*> ChoicePage::getChartextBoxes() {
     return chartextBoxes;
 }
 
-void ChoicePage::goodifyCb(Fl_Widget* w, void* data) { 
-    // show em who's daddy
-    AppWizard* parent = (AppWizard*)data;
+void ChoicePage::activateChoiceClick(Fl_Widget* w, void* data){
+    // get the passed pack, and unpack it
+    choicePack* pack = static_cast<choicePack*>(data);
+    int choice = pack->choice;
+    ChoicePage* thisPage = pack->instance;
+
+    // trigger event based on choices
+    if(choice == 0){
+        thisPage->goodifyCb();
+    } else if(choice == 1){
+        thisPage->replaceAllCb();
+    } else if(choice == 2){
+        thisPage->contextCb();
+
+    }
+}
+
+void ChoicePage::goodifyCb() { 
     // make this character's replacement itself, declare it as non-contextual
     parent->goodifyRep();
-    std::cout << "replacement: " << parent->replacementDict[parent->getBadChar()].replacement << std::endl;
-    nextChar(w, data);}
+    parent->echoReplacement();
+    nextChar();
+}
 
-void ChoicePage::replaceAllCb(Fl_Widget* w, void* data) {
-    // show em who's daddy
-    AppWizard* parent = (AppWizard*)data;
-    ChoicePage* thisPage = (ChoicePage*)w->parent();
+void ChoicePage::replaceAllCb() {
     // replace every instance of this character with the user's input
-    replacementDict[parent->getBadChar()].replacement = thisPage->replaceAllInput->value();
-    replacementDict[parent->getBadChar()].contextual = false;
-    std::cout << "replacement: " << replacementDict[parent->getBadChar()].replacement << std::endl;
+    this->parent->replaceAllRep(this->replaceAllInput->value()[0]);
+    this->parent->echoReplacement();
 }
 
-void ChoicePage::contextCb(Fl_Widget* w, void* data) {
-    AppWizard* parent = (AppWizard*)data;
+void ChoicePage::contextCb() {
+    // TODO
 }
 
-void ChoicePage::nextChar(Fl_Widget* w, void* data) {
-    // show em who's daddy (yes, it's that funny)
-    AppWizard* parent = (AppWizard*)data;
+void ChoicePage::nextChar() {
     // increment the bad character index
     parent->upBindex();
     // if the bad character index is greater than the number of bad characters
-    if(parent->getBindex() >= (*parent->getBadChars()).size()) {
+    if(parent->getBindex() >= parent->getUBadChars()->length()) {
         std::cout << "Going for replacements!" << std::endl;
         // start replacing the bad characters
-        doReplacements(parent);
+        this->parent->doReplacements();
     } else {
         // otherwise refresh the page values
-        parent->refreshVals(data); 
+        this->parent->refreshVals(); 
     }
 }
-
-void ChoicePage::doReplacements(void* data) {
-    // open a .txt file to write to
-    std::ofstream outFile;
-    outFile.open("output.txt");
-    // go through the book page by page and get replacements by searching in map
-    AppWizard* parent = (AppWizard*)data;
-    std::string uPrintable = parent->getLocalPrintable();
-    std::vector<std::string>* pdfPages = parent->getPdfPages();
-    // for every page in the book
-    for(int page = 0; page < pdfPages->size(); page++) {
-        // grab the page text
-        std::string pageText = (*pdfPages)[page];
-
-        // for every character in the page
-        for(int charIndex = 0; charIndex < pageText.size(); charIndex++) {
-            // grab the character
-            std::string thisChar = std::string(1, pageText[charIndex]);
-            // if this character is uPrintable, skip it
-            if(uPrintable.find(thisChar) != std::string::npos) {
-                continue;
-            } else{
-                // otherwise, replace it with its replacement
-                std::string replacement = replacementDict[thisChar].replacement;
-                pageText.replace(charIndex, 1, replacement);
-            
-        }
-    }
-    // write the page to the file
-    outFile << pageText;
-    // end your long-suffering nightmare
-    outFile.close();
-    }
-}
-
-

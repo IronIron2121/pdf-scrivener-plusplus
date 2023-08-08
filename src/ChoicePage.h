@@ -19,19 +19,22 @@ private:
 
     std::string finalString; // final string to be outputted
 
-    // combined structure to store and easily access replacement infos during replacement
-    struct ReplacementInfo {
-        bool contextual; // is this replacement context sensitive?
-        std::string replacement; // what is the replacement?
-    };
-    static std::unordered_map<std::string, ReplacementInfo> replacementDict; // replacement info for each bad char
-    
     Fl_Button* goodifyButton; // don't replace
     Fl_Button* replaceAllButton; // replace everything with input
     Fl_Input* replaceAllInput; // input for the above
     Fl_Button* contextButton; // replace based on context
 
     int numCharBoxes; // number of character boxes
+
+    struct choicePack {
+        int choice;
+        ChoicePage* instance ;
+    };
+
+    void goodifyCb(); // replace bad char with itself
+    void replaceAllCb(); // replace bad char with user input
+    void contextCb(); // replace bad char contextually
+    void nextChar(); // go-to next bad character
 
     // this object is a child of the prodigious AppWizard
     AppWizard* parent; 
@@ -42,11 +45,7 @@ public:
     Fl_Box* getCharLabel();
     std::vector<Fl_Box*> getChartextBoxes();
 
-    static void goodifyCb(Fl_Widget* w, void* data); // replace bad char with itself
-    static void replaceAllCb(Fl_Widget* w, void* data); // replace bad char with user input
-    static void contextCb(Fl_Widget* w, void* data); // replace bad char contextually
-    static void nextChar(Fl_Widget* w, void* data); // go-to next bad character
-    static void doReplacements(void* data); // run all replacements
+    static void activateChoiceClick(Fl_Widget* w, void* data);
 };
 
 

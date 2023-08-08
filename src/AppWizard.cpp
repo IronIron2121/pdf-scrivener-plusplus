@@ -8,7 +8,7 @@ AppWizard::AppWizard(int w, int h, const char* title) : Fl_Window(w, h, title) {
     //uCharOccurs = new std::unordered_map<UChar32, int>;
 
     uSpaces = icu::UnicodeString::fromUTF8(" ");
-    uPrintable = icu::UnicodeString::fromUTF8("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890!@#$%^&*()_+-=[]{};':\\\",./<>?`~|\n");
+    uPrintable = icu::UnicodeString::fromUTF8(" abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890!@#$%^&*()_+-=[]{};':\\\",./<>?`~|\n");
     uNewLines = icu::UnicodeString::fromUTF8("\n\f\t\v\r");
     uPrintablePlus = uPrintable + uNewLines + uSpaces;
 
@@ -220,7 +220,7 @@ void AppWizard::upUCharOccur(UChar32 thisUChar) {
 
 
 // refresh the values of the choice page when next is pressed
-void AppWizard::refreshVals(void* data) {
+void AppWizard::refreshVals() {
     // update bad char display
     std::string newText = "Current Character: " + std::string(this->getDisplayChar());
     std::cout << "new text: " << newText << std::endl;
@@ -289,7 +289,6 @@ void AppWizard::goodifyRep(){
     replacementDict[getBadChar()].contextual = false;
     replacementDict[getBadChar()].replacement = getBadChar();   
 }
-
 void AppWizard::replaceAllRep(UChar32 replacementChar){
     // non-contextual, and its replacement is given value
     replacementDict[getBadChar()].contextual = false;
@@ -301,8 +300,61 @@ void AppWizard::contextualRep(){
 // TODO: CONTEXTUAL REPLACEMENT
 //    replacementDict[getBadChar()].replacement = ();    
 }
-
+void AppWizard::echoReplacement(){
+    std::cout << "replacement: " << replacementDict[getBadChar()].replacement << std::endl;
+}
 
 icu::UnicodeString* AppWizard::getUBadChars(){
     return &(uBadChars);
 }
+
+void AppWizard::doReplacements() {
+    // Open a .txt file to write everything to
+    // TODO - ADD PDF NAME
+    std::ofstream outFile("outputAll.txt");
+
+    // catch opening errors
+    if (!outFile.is_open()) {
+        std::cerr << "Failed to open output.txt for writing." << std::endl;
+        return;
+    }
+
+    // Go through the book page by page and get replacements by searching in the map
+    for (const auto pageText : uPdfList) {
+        // a blank page to copy to
+        icu::UnicodeString modText = icu::UnicodeString::fromUTF8("");
+        
+        // For every character in the page
+        for (int32_t charIndex = 0; charIndex < pageText.length(); ) {
+            // Grab the character
+            UChar32 thisChar = pageText.char32At(charIndex);
+
+            // if this char is printable
+            if (uPrintable.indexOf(thisChar) != -1) {
+                // simply copy over and move over by its size
+                modText += thisChar;
+                charIndex += U16_LENGTH(thisChar);  // Move by the length of the character
+            } else if (uNewLines.indexOf(thisChar) != -1) {
+                // if it's a newline-like character, just add a newline
+                UChar32 replacement = u'\n';
+                modText += replacement;
+                charIndex += U16_LENGTH(replacement);  // move over by newline length
+                
+                }else {
+                // otherwise, replace it with its replacement
+                icu::UnicodeString replacement = icu::UnicodeString::fromUTF8(replacementDict[thisChar].replacement);
+                modText += replacement;
+                charIndex += replacement.length();  // you know the drill
+            }
+        }
+        
+        // Convert the page to UTF8 and write to the file
+        std::string utf8Page;
+        modText.toUTF8String(utf8Page);
+        outFile << utf8Page;
+    }
+
+    // Close the file
+    outFile.close();
+}
+
