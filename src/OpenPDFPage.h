@@ -24,6 +24,7 @@
 #include <iostream>
 #include <sstream>
 #include <unordered_map>
+#include <unordered_set>
 
 class AppWizard; // Forward declaration
 
@@ -34,16 +35,16 @@ private:
     Fl_Button* nextBtn; // go to next page button
 
     // you get a static! you get a static! everyone gets a static!
-    icu::UnicodeString* uPdfText; // initially extracted text as one long string
-    icu::UnicodeString* newPdfText; // cleaned extracted text as one long string
-    std::vector<icu::UnicodeString>* uPdfList; // initially extracted text, page by page
-    std::vector<icu::UnicodeString>* newPdfList; // cleaned extracted text, page by page
+    icu::UnicodeString* uPdfTextHere; // initially extracted text as one long string
+    icu::UnicodeString* newPdfTextHere; // cleaned extracted text as one long string
+    std::vector<icu::UnicodeString>* uPdfListHere; // initially extracted text, page by page
+    std::vector<icu::UnicodeString>* newPdfListHere; // cleaned extracted text, page by page
 
     icu::UnicodeString* uBadChars; // list of bad characters
-    icu::UnicodeString uSpaces; // list of "bad" characters that have been uAccounted for
-    icu::UnicodeString uPrintable; // list of "good" characters
-    icu::UnicodeString uPrintablePlus; // uPrintable + extras
-    icu::UnicodeString uNewLines; // list of new line characters
+    std::unordered_set<UChar32> uSpaces; // list of "bad" characters that have been uAccounted for
+    std::unordered_set<UChar32> uPrintable; // list of "good" characters
+    std::unordered_set<UChar32> uPrintablePlus; // uPrintable + extras
+    std::unordered_set<UChar32> uNewLines; // list of new line characters
 
     std::unordered_map<UChar32, int>* uCharOccurs; // a pointer to the map of every char and its occurences
 
@@ -51,17 +52,18 @@ private:
 
     void processPDFDoc(); // function to process pdfs
     void processPageText(const icu::UnicodeString& pageText); // process a single page of doc
-    void processChar(UChar32 currentChar, bool leadingWhiteSpace); // process a single char of page
+    void processChar(UChar32 currentChar, bool leadingWhiteSpace, int32_t charIt); // process a single char of page
     bool isPrintable(UChar32 currentChar); // check if char is printable / "good"
     void makeOutput(Fl_Multiline_Output* badHere); // print output to console
 
-    static void activateLoad(Fl_Widget* w, void* data); // trampoline
 
 public:
     OpenPDFPage(int x, int y, int w, int h, AppWizard* parent, const char* title = 0);
 
     void loadPDFDoc(); // function to load pdfs
     static void goToChoicePage(Fl_Widget* w, void* data); // function to go to next page
+    static void activateLoad(Fl_Widget* w, void* data); // trampoline
+
 
 };
 #endif

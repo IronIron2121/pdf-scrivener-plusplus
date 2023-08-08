@@ -43,24 +43,27 @@ int AppWizard::getBindex() {
 }
 
 // returns uSPaces
-icu::UnicodeString AppWizard::getUSpaces() {
+std::unordered_set<UChar32> AppWizard::getUSpaces() {
     return uSpaces;
 }
 // returns uNewLines characters
-icu::UnicodeString AppWizard::getUNewLines() {
+std::unordered_set<UChar32> AppWizard::getUNewLines() {
     return uNewLines;
 }
 // returns uPrintable characters
-icu::UnicodeString AppWizard::getUPrintable() {
+std::unordered_set<UChar32> AppWizard::getUPrintable() {
     return uPrintable;
 }
-
-icu::UnicodeString AppWizard::getUPrintablePlus() {
+std::unordered_set<UChar32> AppWizard::getUPrintablePlus() {
     return uPrintablePlus;
 }
 
 std::unordered_map<UChar32, int>* AppWizard::getUCharOccurs() {
-    return &(uCharOccurs);
+    return &uCharOccurs;
+}
+// function to update char occurrence given a sent character
+void AppWizard::upUCharOccur(UChar32 thisUChar) {
+    uCharOccurs[thisUChar]++;
 }
 // get character occurrences of a specific character
 int AppWizard::getUCharOccur(UChar32 thisBadChar){
@@ -210,14 +213,6 @@ std::string AppWizard::getDisplayChar() {
 
 
 
-// function to update char occurrence given a sent character
-void AppWizard::upUCharOccur(UChar32 thisUChar) {
-    uCharOccurs[thisUChar]++;
-}
-
-
-
-
 
 // refresh the values of the choice page when next is pressed
 void AppWizard::refreshVals() {
@@ -258,7 +253,7 @@ icu::UnicodeString* AppWizard::getUPdfText(){
     return &uPdfText;
 }
 void AppWizard::pushToUPdfText(icu::UnicodeString pageText){
-    uPdfText += pageText;
+    uPdfText.append(pageText);
 }
 icu::UnicodeString* AppWizard::getNewPdfText(){
     return &newPdfText;
@@ -273,7 +268,13 @@ std::vector<icu::UnicodeString>* AppWizard::getUPdfList(){
     return &uPdfList;
 }
 void AppWizard::pushToUPdfList(icu::UnicodeString pageText){
-    uPdfList.push_back(pageText);
+    // get string version of text
+    try{
+        uPdfList.push_back(pageText);
+    } catch (const std::exception& e) {
+        std::cout << "exception at listPush: " << e.what() << std::endl;
+    }
+    std::cout << "success!" << std::endl;
 }
 std::vector<icu::UnicodeString>* AppWizard::getNewPdfList(){
     return &newPdfList;

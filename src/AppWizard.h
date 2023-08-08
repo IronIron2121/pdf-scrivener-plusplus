@@ -28,10 +28,10 @@ private:
     std::vector<icu::UnicodeString> uPdfList; // initially extracted text, page by page
     std::vector<icu::UnicodeString> newPdfList; // cleaned extracted text, page by page
 
-    icu::UnicodeString uSpaces; // list of "good" characters
-    icu::UnicodeString uPrintable; // list of "good" characters
-    icu::UnicodeString uPrintablePlus; // uPrintable + extras
-    icu::UnicodeString uNewLines; // list of new line characters
+    std::unordered_set<UChar32> uSpaces; // list of "bad" characters that have been uAccounted for
+    std::unordered_set<UChar32> uPrintable; // list of "good" characters
+    std::unordered_set<UChar32> uPrintablePlus; // uPrintable + extras
+    std::unordered_set<UChar32> uNewLines; // list of new line characters
 
     // combined structure to store and easily access replacement infos during replacement
     struct ReplacementInfo {
@@ -52,11 +52,11 @@ public:
     icu::UnicodeString getGivenBadChar(int index); // gets bad char given index
     std::string getConText(int indx, const icu::UnicodeString& pageText); // get context for given bindex
 
-    icu::UnicodeString getUSpaces();
-    icu::UnicodeString getUNewLines();
-    icu::UnicodeString getUPrintable();
-    icu::UnicodeString getUPrintablePlus();
-    icu::UnicodeString getLocalPrintable();
+    std::unordered_set<UChar32> getUSpaces();
+    std::unordered_set<UChar32> getUNewLines();
+    std::unordered_set<UChar32> getUPrintable();
+    std::unordered_set<UChar32> getUPrintablePlus();
+    std::unordered_set<UChar32> getLocalPrintable();
 
     icu::UnicodeString* getUPdfText(); // gets the initial pdf text (single string)
     void pushToUPdfText(icu::UnicodeString pageText); // push to it

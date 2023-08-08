@@ -18,8 +18,11 @@ OpenPDFPage::OpenPDFPage(int x, int y, int w, int h, AppWizard* parent, const ch
 
  
     // pointers to various things we need to access by reference
-    uPdfText = parent->getUPdfText();
-    uPdfList = parent->getUPdfList();
+    uPdfTextHere = parent->getUPdfText();
+    uPdfListHere = parent->getUPdfList();
+
+    newPdfTextHere = parent->getNewPdfText();
+    newPdfListHere = parent->getNewPdfList();
 
     uBadChars = parent->getUBadChars(); 
     uCharOccurs = parent->getUCharOccurs();
@@ -37,12 +40,13 @@ OpenPDFPage::OpenPDFPage(int x, int y, int w, int h, AppWizard* parent, const ch
     end();
 }
 
-void activateLoad(Fl_Widget* w, void* data) {
+void OpenPDFPage::activateLoad(Fl_Widget* w, void* data) {
     OpenPDFPage* instance = static_cast<OpenPDFPage*>(data);
     instance->loadPDFDoc();
 }
 
 void OpenPDFPage::loadPDFDoc(){
+    std::vector<icu::UnicodeString> testVec;
     // open file chooser 
     const char* thisPDF = fl_file_chooser("Select a PDF", "*.pdf", NULL); 
 
@@ -69,64 +73,104 @@ void OpenPDFPage::loadPDFDoc(){
                 poppler::byte_array pageBytes = pageIt->text().to_utf8(); // get data in utf8 encoding
                 std::string strPageText(pageBytes.begin(), pageBytes.end()); // convert bytes to string
                 icu::UnicodeString uPageText(strPageText.c_str(), "UTF-8"); // convert string to unicode string
-                parent->pushToUPdfList(uPageText); // push to the pageList vector
-                parent->pushToUPdfText(uPageText); // push to the pageList vector
+
+                // push the page text to the pageList vector
+                uPdfListHere->push_back(uPageText);
+                uPdfTextHere->append(uPageText); // push to the pageList vector
             } 
             
             pageIt.reset(); // reset the page pointer
         }
+    } else {
+        return ; // if the PDF is invalid, return
     }
+    // if every thing went well, process the PDF
+    processPDFDoc();
+
 }
 
 void OpenPDFPage::processPDFDoc() {
     // for each page in the PDF, run processing function
-    for (const auto& uPdfPage : *uPdfList) {
+    for (const auto& uPdfPage : *uPdfListHere) {
+        newPdfListHere->push_back(icu::UnicodeString(""));
         processPageText(uPdfPage);
     }
-
     // build & display output message
-    //makeOutput();
+    makeOutput(badOut);
 }
 
 void OpenPDFPage::processPageText(const icu::UnicodeString& uPageText) {
-    // account for potential leading whitespaces
-    bool leadingWhiteSpace = true; 
-
     // get the length of the page
-    int32_t len = uPageText.length();
+    int32_t thisLen = uPageText.length();
+    // assume leading whitespaces
+    bool leadingWhiteSpace = true;
+    // add a page to the newPdfList
 
-    // Using a UChar iterator for UnicodeString
-    for (int32_t charIt = 0; charIt < len; charIt++) {
+    // UChar iterator for unicode string
+    for (int32_t charIt = 0; charIt < thisLen; charIt++) {
         UChar32 uChar = uPageText.char32At(charIt);
-        processChar(uChar, leadingWhiteSpace);
+        processChar(uChar, leadingWhiteSpace, charIt);
     }
 }
-
-void OpenPDFPage::processChar(UChar32 uChar, bool leadingWhiteSpace) {
+void OpenPDFPage::processChar(UChar32 uChar, bool leadingWhiteSpace, int32_t charIt) {
     // if character is a space
     if(leadingWhiteSpace && uSpaces.indexOf(uChar) != -1){
         // just skip
-    } else if (uPrintablePlus.indexOf(uChar) != -1) {
-        // if it's a good character, just add it to the occurrences map
-        *uPdfText += uChar;
+        return;
+
+    } else if(uNewLines.indexOf(uChar) != -1){
+        // if it's a newline-like, just add a new line
+        *newPdfTextHere += icu::UnicodeString("\n", "UTF-8");
+        (*newPdfListHere).back() += icu::UnicodeString("\n", "UTF-8");
+        leadingWhiteSpace = true;
+        
+    } else if (uPrintable.indexOf(uChar) != -1) {
+        // if it's a good character, just add it to the string
+        leadingWhiteSpace = false;
+        *newPdfTextHere += uChar;
+        (*newPdfListHere).back() += uChar;
+
     } else {
-        // if it's not, add it to the bad character list AND add it to the 
-        parent->upUCharOccur(uChar);
-        *uPdfText += uChar;
+        // if it's a bad character, add to its occurrences, add it to the string, and the list
+        leadingWhiteSpace = false;
+        (*uCharOccurs)[uChar] += 1;
+        *newPdfTextHere += uChar;
+        (*newPdfListHere).back() += uChar;
+
     }
-    // finish this off, lololol
 }
 
 
 void OpenPDFPage::makeOutput(Fl_Multiline_Output* badHere) {
-    // add code here to make and display output message
+    // start output message
+    std::string outputMessage = "Bad characters found:\n";
+
+    // error handling 
+    if(uCharOccurs) {
+        // go thru every key-value pair in the dictionary
+        for(const auto& [thisChar, occur] : *uCharOccurs) {
+            // wrap the char in unicode string then convert to std::string
+            std::string charStr;
+            icu::UnicodeString(thisChar).toUTF8String(charStr);
+            
+            // append character to output message
+            outputMessage += charStr + ": " + std::to_string(occur) + "\n";
+        }
+    } else {
+        outputMessage += "No bad characters detected.\n";
+    }
+
+    // Set the constructed message to the Fl_Multiline_Output widget
+    badHere->value(outputMessage.c_str());
 }
+
 // --------------------
 // --------------------
 // --------------------
 
 void OpenPDFPage::goToChoicePage(Fl_Widget* w, void* data) {
     // tell the wizard to go to the next page
+    // there's gotta be a cleaner way of od
     ((Fl_Wizard*)w->parent()->parent())->next();
     // refresh the values of the choice page
     //((AppWizard*)data)->refreshVals(data);
