@@ -15,6 +15,8 @@ OpenPDFPage::OpenPDFPage(int x, int y, int w, int h, AppWizard* parent, const ch
     uNewLines = parent->getUNewLines();
     // get uPrintable from parent
     uPrintablePlus = parent->getUPrintablePlus();
+    // get the choicePage from parent
+    choicePageHere = parent->getChoicePage();
 
  
     // pointers to various things we need to access by reference
@@ -35,7 +37,7 @@ OpenPDFPage::OpenPDFPage(int x, int y, int w, int h, AppWizard* parent, const ch
 
     // activate buttons
     loadBtn->callback(activateLoad, this);
-    nextBtn->callback(goToChoicePage, parent);
+    nextBtn->callback(goToChoicePage, choicePageHere);
 
     end();
 }
@@ -173,8 +175,11 @@ void OpenPDFPage::makeOutput(Fl_Multiline_Output* badHere) {
 // --------------------
 
 void OpenPDFPage::goToChoicePage(Fl_Widget* w, void* data) {
+    // unpack choice page from data
+    ChoicePage** choicePageHere = static_cast<ChoicePage**>(data);
     // tell the wizard to go to the next page
-    // there's gotta be a cleaner way of doing this
+    // there's gotta be a cleaner way of doing this but idk what it is
     ((Fl_Wizard*)w->parent()->parent())->next();
+    (**choicePageHere).refreshVals();
 
 }

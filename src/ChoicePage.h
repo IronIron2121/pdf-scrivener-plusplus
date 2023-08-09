@@ -42,7 +42,6 @@ private:
     UChar32 getCurrChar();
 
 
-    void refreshVals(); // refresh display values
 
     // pointer to wizard dictionary
     // combined structure to store and easily access replacement infos during replacement
@@ -60,6 +59,8 @@ private:
     Fl_Button* replaceAllButton; // replace everything with input
     Fl_Input* replaceAllInput; // input for the above
     Fl_Button* contextButton; // replace based on context
+
+    std::vector<Fl_Box*> getChartextBoxes(); // get context boxes for current character
 
     int numCharBoxes; // number of character boxes
 
@@ -79,10 +80,11 @@ private:
 public:
     ChoicePage(int x, int y, int w, int h,  AppWizard* parent, const char* title = 0);
     
-    Fl_Box* getCharLabel();
-    std::vector<Fl_Box*> getChartextBoxes();
+    Fl_Box* getCharLabel(); // get string for current character
 
-    static void activateChoiceClick(Fl_Widget* w, void* data);
+    void refreshVals(); // refresh display values
+    static void activateChoiceClick(Fl_Widget* w, void* data); // go down decision path for user choice
+
 };
 
 

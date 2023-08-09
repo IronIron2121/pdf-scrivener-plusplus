@@ -20,6 +20,8 @@
 #include <unicode/utf8.h>
 #include <unicode/utf16.h>
 
+#include "ChoicePage.h"
+
 
 #include <iostream>
 #include <sstream>
@@ -40,7 +42,7 @@ private:
     std::vector<icu::UnicodeString>* uPdfListHere; // initially extracted text, page by page
     std::vector<icu::UnicodeString>* newPdfListHere; // cleaned extracted text, page by page
     
-    ChoicePage* choicePageHere; // pointer to choice page
+    ChoicePage** choicePageHere; // pointer to choice page
 
     icu::UnicodeString* uBadChars; // list of bad characters
     std::unordered_set<UChar32>* uSpaces; // list of "bad" characters that have been uAccounted for

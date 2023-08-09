@@ -58,7 +58,7 @@ public:
     // initialise the check sets
     void getSets(std::unordered_set<UChar32>& set, const std::string& stdStr);
 
-    ChoicePage* getChoicePage(); // get pointer to choice page
+    ChoicePage** getChoicePage(); // get pointer to choice page
 
     std::string getDisplayChar(); // get the character to display on choice page
 
