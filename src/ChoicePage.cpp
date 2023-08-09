@@ -17,8 +17,8 @@ ChoicePage::ChoicePage(int x, int y, int w, int h, AppWizard* parent, const char
     uBadCharsHere = parent->getUBadChars();
     replacementDictHere = parent->getReplacementDict();
     uCharOccursHere = parent->getUCharOccurs();
-    uPdfTextHere = parent->getUPdfText();
-    uPdfListHere = parent->getUPdfList();
+    newPdfTextHere = parent->getNewPdfText();
+    newPdfListHere = parent->getNewPdfList();
     uPrintableHere = parent->getUPrintable();
     uNewLinesHere = parent->getUNewLines();
 
@@ -89,6 +89,44 @@ void ChoicePage::activateChoiceClick(Fl_Widget* w, void* data){
     }
 }
 
+void ChoicePage::goodifyCb() { 
+    // i apologise sincerely for this. there was no other way
+
+    // non-contextual replacement
+    ((*replacementDictHere)[(*uBadCharsHere)[*bindexHere]]).contextual = false;
+
+    // replacement is the character itself...converted from uChar to uString
+    icu::UnicodeString thisRep = icu::UnicodeString(getCurrChar());
+
+    ((*replacementDictHere)[(*uBadCharsHere)[*bindexHere]]).replacement = thisRep; 
+
+    icu::UnicodeString postRep = ((*replacementDictHere)[(*uBadCharsHere)[*bindexHere]]).replacement;
+    std::string postRepStr;
+    postRep.toUTF8String(postRepStr);
+    std::cout << "replaced with IN DICT: " << postRepStr << std::endl;
+
+    nextChar();
+}
+
+
+void ChoicePage::replaceAllCb() {
+    // non-contextual replacement
+    ((*replacementDictHere)[(*uBadCharsHere)[*bindexHere]]).contextual = false;
+    // replace every instance of this character with the user's input
+    // convert input to UChar32
+    std::string inputStr = this->replaceAllInput->value();
+    icu::UnicodeString inputU(inputStr.c_str());
+
+    ((*replacementDictHere)[(*uBadCharsHere)[*bindexHere]]).replacement = inputU;
+    nextChar();
+
+}
+
+void ChoicePage::contextCb() {
+    // TODO
+}
+
+
 // get the current character
 UChar32 ChoicePage::getCurrChar() {
     // get the bad character
@@ -111,30 +149,6 @@ std::string ChoicePage::getDisplayChar() {
     return badCharStr;
 }
 
-void ChoicePage::goodifyCb() { 
-    // make this character's replacement itself, declare it as non-contextual
-    //std::cout << "bindexHere: " << *bindexHere << std::endl;
-    
-    // i apologise sincerely for this. there was no other way
-    // non-contextual replacement
-    ((*replacementDictHere)[*bindexHere]).contextual = false;
-
-    // replacement is the character itself
-    std::string repStr = getDisplayChar();
-    ((*replacementDictHere)[*bindexHere]).replacement = repStr;
-    nextChar();
-}
-
-
-void ChoicePage::replaceAllCb() {
-    // replace every instance of this character with the user's input
-    this->parent->replaceAllRep(this->replaceAllInput->value()[0]);
-    this->parent->echoReplacement();
-}
-
-void ChoicePage::contextCb() {
-    // TODO
-}
 
 void ChoicePage::nextChar() {
     // increment the bad character index
@@ -152,62 +166,6 @@ void ChoicePage::nextChar() {
     }
 }
 
-void ChoicePage::doReplacements(){
-    // Open a .txt file to write everything to
-    // TODO - ADD PDF NAME HERE
-    std::ofstream outFile("outputAll.txt");
-
-    // catch opening errors
-    if (!outFile.is_open()) {
-        std::cerr << "Failed to open output.txt for writing." << std::endl;
-        return;
-    }
-
-    int i = 0;
-    // Go through the book page by page and get replacements by searching in the map
-    for (const auto& pageText : *uPdfListHere) {
-        std::cout << "beginning page " << i << std::endl;
-        // a blank page to copy to
-        icu::UnicodeString modText = icu::UnicodeString::fromUTF8("");
-        
-        // For every character in the page
-        for (int32_t charIndex = 0; charIndex < pageText.length(); ) {
-            std::cout << "charIndex: " << charIndex << std::endl;
-            // Grab the character
-            UChar32 thisChar = pageText.char32At(charIndex);
-
-            // if this char is printable
-            if ((*uPrintableHere).find(thisChar) != (*uPrintableHere).end()) {
-                // simply copy over and move over by its size
-                modText += thisChar;
-                charIndex += U16_LENGTH(thisChar);  // Move by the length of the character
-            } else if ((*uNewLinesHere).find(thisChar) != (*uNewLinesHere).end()) {
-                // if it's a newline-like character, just add a newline
-                UChar32 replacement = u'\n';
-                modText += replacement;
-                charIndex += U16_LENGTH(replacement);  // move over by newline length
-                
-            } else {
-                // otherwise, replace it with its replacement
-                icu::UnicodeString replacement = icu::UnicodeString::fromUTF8((*replacementDictHere)[thisChar].replacement);
-                modText += replacement;
-                charIndex += replacement.length();  // you know the drill
-            }
-        }
-        
-        // Convert the page to UTF8 and write to the file
-        std::string utf8Page;
-        modText.toUTF8String(utf8Page);
-        outFile << "OKAY, HERE'S A TEST\n";
-        outFile << utf8Page;
-    }
-
-    std::cout << "Done!" << std::endl;
-
-    // Close the file
-    outFile.close();
-
-}
 
 void ChoicePage::refreshVals() {
     // update bad char display
@@ -324,7 +282,7 @@ std::vector<std::string> ChoicePage::getBintexts() {
         // for every example we wanna make
         for(int i = 0; i < numExamples; i++) {
             // try to find the next occurrence of this character
-            int32_t thisDex = (*uPdfTextHere).indexOf(realBadChar, minDex);
+            int32_t thisDex = (*newPdfTextHere).indexOf(realBadChar, minDex);
 
             // if we found it, add it to the list of indices
             if (thisDex != std::string::npos) {
@@ -336,7 +294,7 @@ std::vector<std::string> ChoicePage::getBintexts() {
         // get the context of each bad character
         std::vector<std::string> contextList;
         for(int i = 0; i < indices.size(); i++) {
-            std::tuple<std::string, int, int> contOut= getConText(indices[i], (*uPdfTextHere));
+            std::tuple<std::string, int, int> contOut= getConText(indices[i], (*newPdfTextHere));
             std::string thisContext = std::get<0>(contOut);
             int thisPos = std::get<1>(contOut);
             int thisLength = std::get<2>(contOut);
@@ -353,4 +311,70 @@ std::vector<std::string> ChoicePage::getBintexts() {
         // return a vector containing the index of the bad character
         return contextList;
     }
+}
+
+
+void ChoicePage::doReplacements(){
+    // Open a .txt file to write everything to
+    // TODO - ADD PDF NAME HERE
+    std::ofstream outFile("outputAll.txt");
+
+    // catch opening errors
+    if (!outFile.is_open()) {
+        std::cerr << "Failed to open output.txt for writing." << std::endl;
+        return;
+    }
+
+    int i = 0;
+    // Go through the book page by page and get replacements by searching in the map
+    for (const auto& pageText : *newPdfListHere) {
+        i++;
+        // a blank page to copy to
+        icu::UnicodeString modText = icu::UnicodeString::fromUTF8("");
+        
+        // For every character in the page
+        for (int32_t charIndex = 0; charIndex < pageText.length(); ) {
+            // Grab the character
+            UChar32 thisChar = pageText.char32At(charIndex);
+
+            // if this char is printable
+            if ((*uPrintableHere).find(thisChar) != (*uPrintableHere).end()) {
+                // simply copy over and move over by its size
+                modText += thisChar;
+                charIndex += U16_LENGTH(thisChar);  // Move by the length of the character
+            } else if ((*uNewLinesHere).find(thisChar) != (*uNewLinesHere).end()) {
+                // if it's a newline-like character, just add a newline
+                UChar32 replacement = u'\n';
+                modText += replacement;
+                charIndex += U16_LENGTH(thisChar);  // move over by newline length
+                
+            } else {
+                // otherwise, replace it with its replacement
+                icu::UnicodeString replacement = (*replacementDictHere)[thisChar].replacement;
+                modText += replacement;
+                charIndex += U16_LENGTH(thisChar);  // you know the drill
+
+                icu::UnicodeString original = icu::UnicodeString(thisChar);
+                std::string originalHolder;
+                original.toUTF8String(originalHolder);
+                
+
+
+                std::string replacementHolder;
+                replacement.toUTF8String(replacementHolder);
+                std::cout << "replaced " << originalHolder << " with " << replacementHolder << std::endl;
+            }
+        }
+        
+        // Convert the page to UTF8 and write to the file
+        std::string utf8Page;
+        modText.toUTF8String(utf8Page);
+        outFile << utf8Page;
+    }
+
+    std::cout << "Done!" << std::endl;
+
+    // Close the file
+    outFile.close();
+
 }

@@ -14,14 +14,12 @@
 #include <poppler/cpp/poppler-page.h>
 
 #include <unicode/utypes.h>
-#include <unicode/ustring.h>
 #include <unicode/uchar.h>
 #include <unicode/unistr.h>
 #include <unicode/utf8.h>
 #include <unicode/utf16.h>
 
 #include "ChoicePage.h"
-
 
 #include <iostream>
 #include <sstream>

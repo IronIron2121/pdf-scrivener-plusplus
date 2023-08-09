@@ -3,11 +3,19 @@
 
 // file for the replacement dict struct
 #include <unicode/uchar.h>
+#include <unicode/ustring.h>
+#include <unicode/utypes.h>
+#include <unicode/utypes.h>
+#include <unicode/uchar.h>
+#include <unicode/unistr.h>
+#include <unicode/utf8.h>
+#include <unicode/utf16.h>
+
 #include <string>
 
 struct ReplacementInfo {
     bool contextual; // is this replacement context sensitive?
-    std::string replacement; // what is the replacement?
+    icu::UnicodeString replacement; // what is the replacement?
 };
 
 #endif

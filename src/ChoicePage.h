@@ -13,7 +13,6 @@
 #include <tuple>
 
 #include <unicode/utypes.h>
-#include <unicode/ustring.h>
 #include <unicode/uchar.h>
 #include <unicode/unistr.h>
 #include <unicode/utf8.h>
@@ -35,8 +34,8 @@ private:
     int32_t* bindexHere; // bad char index from parent
     icu::UnicodeString* uBadCharsHere; // list of bad characters from parent
     std::unordered_map<UChar32, int>* uCharOccursHere; // a pointer to the map of every char and its occurences from parent
-    icu::UnicodeString* uPdfTextHere; // initially extracted text as one long string from parent
-    std::vector<icu::UnicodeString>* uPdfListHere; 
+    icu::UnicodeString* newPdfTextHere; // initially extracted text as one long string from parent
+    std::vector<icu::UnicodeString>* newPdfListHere; 
     std::unordered_set<UChar32>* uPrintableHere;
     std::unordered_set<UChar32>* uNewLinesHere;
     UChar32 getCurrChar();
@@ -61,6 +60,7 @@ private:
     Fl_Button* contextButton; // replace based on context
 
     std::vector<Fl_Box*> getChartextBoxes(); // get context boxes for current character
+
 
     int numCharBoxes; // number of character boxes
 

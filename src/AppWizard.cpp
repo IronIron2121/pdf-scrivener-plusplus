@@ -285,13 +285,14 @@ void AppWizard::contextualRep(){
 //    replacementDict[getBadChar()].replacement = ();    
 }
 void AppWizard::echoReplacement(){
-    std::cout << "replacement: " << replacementDict[getBadChar()].replacement << std::endl;
+
 }
 
 icu::UnicodeString* AppWizard::getUBadChars(){
     return &uBadChars;
 }
 
+/*
 void AppWizard::doReplacements() {
     // Open a .txt file to write everything to
     // TODO - ADD PDF NAME
@@ -326,7 +327,7 @@ void AppWizard::doReplacements() {
                 
                 }else {
                 // otherwise, replace it with its replacement
-                icu::UnicodeString replacement = icu::UnicodeString::fromUTF8(replacementDict[thisChar].replacement);
+                UChar32 replacement = replacementDict[thisChar].replacement;
                 modText += replacement;
                 charIndex += replacement.length();  // you know the drill
             }
@@ -341,7 +342,7 @@ void AppWizard::doReplacements() {
     // Close the file
     outFile.close();
 }
-
+*/
 ChoicePage** AppWizard::getChoicePage(){
     return &choicePage;
 
