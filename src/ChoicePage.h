@@ -8,7 +8,9 @@
 #include <vector>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <fstream>
+#include <tuple>
 
 #include <unicode/utypes.h>
 #include <unicode/ustring.h>
@@ -16,6 +18,7 @@
 #include <unicode/unistr.h>
 #include <unicode/utf8.h>
 #include <unicode/utf16.h>
+
 #include "ReplacementInfo.h"
 
 
@@ -30,8 +33,14 @@ private:
     std::string finalString; // final string to be outputted
 
     int32_t* bindexHere; // bad char index from parent
-
     icu::UnicodeString* uBadCharsHere; // list of bad characters from parent
+    std::unordered_map<UChar32, int>* uCharOccursHere; // a pointer to the map of every char and its occurences from parent
+    icu::UnicodeString* uPdfTextHere; // initially extracted text as one long string from parent
+    std::vector<icu::UnicodeString>* uPdfListHere; 
+    std::unordered_set<UChar32>* uPrintableHere;
+    std::unordered_set<UChar32>* uNewLinesHere;
+    UChar32 getCurrChar();
+
 
     void refreshVals(); // refresh display values
 
@@ -41,11 +50,9 @@ private:
     void doReplacements();
 
     bool endChecker(UChar32 thisChar, const icu::UnicodeString& enders);
-    std::pair<int32_t,int32_t> ChoicePage::getPointers(int indx, const icu::UnicodeString& pageText, const int32_t thisPageLength){
-
-
-
-
+    std::pair<int32_t,int32_t> getPointers(int indx, const icu::UnicodeString& pageText, const int32_t thisPageLength);
+    std::tuple<std::string, int, int> getConText(int indx, const icu::UnicodeString& pageText);
+    std::vector<std::string> getBintexts();
 
     std::unordered_map<UChar32, ReplacementInfo>* replacementDictHere; // replacement info for each bad char
     

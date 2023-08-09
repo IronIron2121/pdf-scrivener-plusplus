@@ -58,6 +58,8 @@ public:
     // initialise the check sets
     void getSets(std::unordered_set<UChar32>& set, const std::string& stdStr);
 
+    ChoicePage* getChoicePage(); // get pointer to choice page
+
     std::string getDisplayChar(); // get the character to display on choice page
 
     UChar32 getBadChar(); // gets the current bad character
@@ -99,7 +101,6 @@ public:
 
     // utils
     bool endChecker(UChar32 thisChar, const icu::UnicodeString& enders); // check if a char is an ender
-    void refreshVals(); // refresh the values of the choice page when next is pressed
      // get pointers for context
     std::pair<int32_t,int32_t> getPointers(int indx, const icu::UnicodeString& pageText, const int32_t thisPageLength);
     void doReplacements();

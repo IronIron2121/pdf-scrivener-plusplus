@@ -35,7 +35,7 @@ OpenPDFPage::OpenPDFPage(int x, int y, int w, int h, AppWizard* parent, const ch
 
     // activate buttons
     loadBtn->callback(activateLoad, this);
-    nextBtn->callback(goToChoicePage);
+    nextBtn->callback(goToChoicePage, parent);
 
     end();
 }
@@ -174,8 +174,7 @@ void OpenPDFPage::makeOutput(Fl_Multiline_Output* badHere) {
 
 void OpenPDFPage::goToChoicePage(Fl_Widget* w, void* data) {
     // tell the wizard to go to the next page
-    // there's gotta be a cleaner way of od
+    // there's gotta be a cleaner way of doing this
     ((Fl_Wizard*)w->parent()->parent())->next();
-    // refresh the values of the choice page
-    //((AppWizard*)data)->refreshVals(data);
+
 }
