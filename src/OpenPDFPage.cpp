@@ -2,11 +2,13 @@
 #include "AppWizard.h"
 
 OpenPDFPage::OpenPDFPage(int x, int y, int w, int h, AppWizard* parent, const char* title) : MyPage(x, y, w, h, title) {
-    // button to load, output to display bad characters, and button to go to next page
+    // buttons to load, output to display bad characters, and button to go to next page
     loadBtn = new Fl_Button(50, 50, 150, 40, "Open PDF");
     nextBtn = new Fl_Button(250, 50, 150, 40, "Next");
     badOut = new Fl_Multiline_Output(50, 200, 900, 600, "");
 
+    // initialise attributes
+    initAttributes();
     // get uSpaces from parent
     uSpaces = parent->getUSpaces();
     // get uPrintable from parent
@@ -17,29 +19,24 @@ OpenPDFPage::OpenPDFPage(int x, int y, int w, int h, AppWizard* parent, const ch
     uPrintablePlus = parent->getUPrintablePlus();
     // get the choicePage from parent
     choicePageHere = parent->getChoicePage();
-
- 
-    // pointers to various things we need to access by reference
+    // pointers to initially extracted text
     uPdfTextHere = parent->getUPdfText();
     uPdfListHere = parent->getUPdfList();
-
+    // pointers to whitespace & new-line cleaned text
     newPdfTextHere = parent->getNewPdfText();
     newPdfListHere = parent->getNewPdfList();
-
+    // link to bad characters and their occurrences
     uBadChars = parent->getUBadChars(); 
     uCharOccurs = parent->getUCharOccurs();
-
-    if(!uCharOccurs) {
-        std::cout << "charOccur is null" << std::endl;
-    } else{
-        std::cout << "charOccur is not null" << std::endl;
-    }
-
     // activate buttons
     loadBtn->callback(activateLoad, this);
     nextBtn->callback(goToChoicePage, choicePageHere);
 
     end();
+}
+
+void OpenPDFPage::initAttributes(){
+
 }
 
 void OpenPDFPage::activateLoad(Fl_Widget* w, void* data) {

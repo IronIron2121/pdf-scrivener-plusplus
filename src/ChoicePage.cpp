@@ -1,5 +1,8 @@
 #include "ChoicePage.h"
 #include "AppWizard.h"
+#include "ContextPage.h"
+#include <iostream>
+
 
 ChoicePage::ChoicePage(int x, int y, int w, int h, AppWizard* parent, const char* title) : MyPage(x, y, w, h, title) {
     // Display current bad character
@@ -7,12 +10,9 @@ ChoicePage::ChoicePage(int x, int y, int w, int h, AppWizard* parent, const char
     std::string charText = "Current Character: " + displayChar;
     thisCharLabel = new Fl_Box(x+10, y+10, w-20, 30, charText.c_str());
 
-
     // Display context for the bad character
     std::vector<std::string> listOfContexts = parent->getBintexts();
 
-    // yeah, so, basically; if I don't access parent attributes like this, we segfault
-    // same goes for OpenPDFPage. so this will have to do for now
     bindexHere = parent->getBindex();
     uBadCharsHere = parent->getUBadChars();
     replacementDictHere = parent->getReplacementDict();
@@ -22,9 +22,6 @@ ChoicePage::ChoicePage(int x, int y, int w, int h, AppWizard* parent, const char
     uPrintableHere = parent->getUPrintable();
     uNewLinesHere = parent->getUNewLines();
 
-
-    finalString = "";
-    
     // gap between each context
     int yGap = 100;
     
@@ -123,13 +120,14 @@ void ChoicePage::replaceAllCb() {
 }
 
 void ChoicePage::contextCb() {
-    // TODO
+    ContextPage* thisContextPage = new ContextPage(0, 0, 1000, 800, parent, "Contextual Replacement");
+    thisContextPage->newInit();  // Refresh before showing.
+    thisContextPage->show();
 }
 
 
 // get the current character
 UChar32 ChoicePage::getCurrChar() {
-    // get the bad character
     UChar32 badChar = (*uBadCharsHere)[*bindexHere];
     return badChar;
 }
@@ -169,7 +167,7 @@ void ChoicePage::nextChar() {
 
 void ChoicePage::refreshVals() {
     // update bad char display
-    std::string newText = "Current Character: " + std::string(this->getDisplayChar());
+    std::string newText = "Current Character: " + std::string(getDisplayChar());
     std::cout << "new text: " << newText << std::endl;
 
     Fl_Box *thisCharLabel = getCharLabel();
@@ -223,13 +221,36 @@ std::pair<int32_t,int32_t> ChoicePage::getPointers(int indx, const icu::UnicodeS
     std::pair<int32_t,int32_t> this_out = std::make_pair(leftPointer, rightPointer);
     return this_out;
 }
-std::tuple<std::string, int, int> ChoicePage::getConText(int indx, const icu::UnicodeString& pageText) {
+// just returns the context
+icu::UnicodeString ChoicePage::justContext(int indx, const icu::UnicodeString& pageText) {
     int32_t thisPageLength = pageText.length();
 
     // error handling
     if (indx < 0 || indx >= thisPageLength) {
         std::cerr << "bad index with: " << indx << std::endl;
-        return std::make_tuple("", -1, -1);
+        return icu::UnicodeString("");
+    }
+
+    // get the pointers for this run and assign them
+    std::pair<int32_t,int32_t> pointers = getPointers(indx, pageText, thisPageLength);
+    int32_t leftPointer = pointers.first;
+    int32_t rightPointer = pointers.second;
+
+    // get the relative position of the bad character
+    int32_t leftDiff = indx - leftPointer;
+
+    // extract the context 
+    icu::UnicodeString context = pageText.tempSubString(leftPointer, rightPointer - leftPointer);
+
+    return context;
+}
+std::tuple<std::string, int, int, icu::UnicodeString> ChoicePage::getConText(int indx, const icu::UnicodeString& pageText) {
+    int32_t thisPageLength = pageText.length();
+
+    // error handling
+    if (indx < 0 || indx >= thisPageLength) {
+        std::cerr << "bad index with: " << indx << std::endl;
+        return std::make_tuple("", -1, -1, "");
     }
 
     // get the pointers for this run and assign them
@@ -257,7 +278,7 @@ std::tuple<std::string, int, int> ChoicePage::getConText(int indx, const icu::Un
     combined.toUTF8String(combinedStr);
 
     // pack together the context and the relative position of the bad character
-    std::tuple<std::string, int, int> thisOut = std::make_tuple(combinedStr, leftDiff, contextSize);
+    std::tuple<std::string, int, int, icu::UnicodeString> thisOut = std::make_tuple(combinedStr, leftDiff, contextSize, context);
 
     return thisOut;
 }
@@ -294,7 +315,7 @@ std::vector<std::string> ChoicePage::getBintexts() {
         // get the context of each bad character
         std::vector<std::string> contextList;
         for(int i = 0; i < indices.size(); i++) {
-            std::tuple<std::string, int, int> contOut= getConText(indices[i], (*newPdfTextHere));
+            std::tuple<std::string, int, int, icu::UnicodeString> contOut= getConText(indices[i], (*newPdfTextHere));
             std::string thisContext = std::get<0>(contOut);
             int thisPos = std::get<1>(contOut);
             int thisLength = std::get<2>(contOut);
@@ -349,20 +370,35 @@ void ChoicePage::doReplacements(){
                 charIndex += U16_LENGTH(thisChar);  // move over by newline length
                 
             } else {
-                // otherwise, replace it with its replacement
-                icu::UnicodeString replacement = (*replacementDictHere)[thisChar].replacement;
-                modText += replacement;
-                charIndex += U16_LENGTH(thisChar);  // you know the drill
+                // otherwise it's a bad character
+                // if it's non-contextual, replace it with its replacement
+                if (!((*replacementDictHere)[thisChar].contextual)) {
+                    // get the replacement and convert it to a UChar32
+                    icu::UnicodeString replacement = (*replacementDictHere)[thisChar].replacement;
+                    modText += replacement;
+                    charIndex += U16_LENGTH(thisChar);  // you know the drill
+                } else{
+                    // if it's contextual, find its context and provide the suitable replacement
+                    // get conText tuple
+                    std::tuple<std::string, int, int, icu::UnicodeString> conText = getConText(charIndex, pageText);
+                    // just grab the context
+                    icu::UnicodeString context = std::get<3>(conText);
+                    // TODO: index into the context dictionary
 
+                    //icu::UnicodeString replacement = (*contextDictHere)[thisChar][context];
+                    // modText += replacement;
+                    // charIndex += U16_LENGTH(thisChar);  // you know the drill
+
+                }
+
+                /*
                 icu::UnicodeString original = icu::UnicodeString(thisChar);
                 std::string originalHolder;
                 original.toUTF8String(originalHolder);
-                
-
-
                 std::string replacementHolder;
                 replacement.toUTF8String(replacementHolder);
                 std::cout << "replaced " << originalHolder << " with " << replacementHolder << std::endl;
+                */
             }
         }
         

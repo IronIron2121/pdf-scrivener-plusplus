@@ -19,6 +19,7 @@ add_executable (pdf_scrivener
     "src/AppWizard.cpp"
     "src/ChoicePage.cpp"
     "src/OpenPDFPage.cpp"
+    "src/ContextPage.cpp"
 )
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)

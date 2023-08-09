@@ -1,11 +1,15 @@
 #include "AppWizard.h"
-
+#include "FL/Fl_Wizard.H"
+#include "OpenPDFPage.h"
+#include "ChoicePage.h"
+#include "ContextPage.h"
 
 AppWizard::AppWizard(int w, int h, const char* title) : Fl_Window(w, h, title) {
     wizard = new Fl_Wizard(0, 0, w, h);
     openPage = new OpenPDFPage(0, 0, w, h, this, "PDF Scrivener - Open PDF");
     choicePage = new ChoicePage(0, 0, w, h, this, "PDF Scrivener - Choice Page");
-    //uCharOccurs = new std::unordered_map<UChar32, int>;
+    contextPage = new ContextPage(0, 0, w, h, this, "PDF Scrivener - Context Page");
+    //uCharOccurs = new std::map<UChar32, int>;
 
     spaces = " ";
     printable = " abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890!@#$%^&*()_+-=[]{};':\\\",./<>?`~|";
@@ -27,12 +31,14 @@ AppWizard::AppWizard(int w, int h, const char* title) : Fl_Window(w, h, title) {
     newPdfText = icu::UnicodeString::fromUTF8("");
     uPdfList = {};
     newPdfList = {};
+    contextDict = {};
 
     replacementDict = {};
 
     // add the pages to the wizard
     wizard->add(openPage);
     wizard->add(choicePage);
+    wizard->add(contextPage);
 
     // hide all pages except the first
     wizard->value(openPage);
@@ -71,7 +77,7 @@ void AppWizard::getSets(std::unordered_set<UChar32>& set, const std::string& std
 }
 
 
-std::unordered_map<UChar32, int>* AppWizard::getUCharOccurs() {
+std::map<UChar32, int>* AppWizard::getUCharOccurs() {
     return &uCharOccurs;
 }
 // function to update char occurrence given a sent character
@@ -262,7 +268,7 @@ void AppWizard::pushToNewPdfList(icu::UnicodeString pageText){
 // ------------------------------------------------------------------------- //
 
 // get reference to replacement dictionary
-std::unordered_map<UChar32, ReplacementInfo>* AppWizard::getReplacementDict(){
+std::map<UChar32, ReplacementInfo>* AppWizard::getReplacementDict(){
     return &replacementDict;
 }
 
@@ -284,6 +290,11 @@ void AppWizard::contextualRep(){
 // TODO: CONTEXTUAL REPLACEMENT
 //    replacementDict[getBadChar()].replacement = ();    
 }
+std::map<UChar32, std::map<icu::UnicodeString, icu::UnicodeString>>* AppWizard::getContextDict(){
+    return &contextDict;
+}
+
+
 void AppWizard::echoReplacement(){
 
 }
@@ -292,57 +303,6 @@ icu::UnicodeString* AppWizard::getUBadChars(){
     return &uBadChars;
 }
 
-/*
-void AppWizard::doReplacements() {
-    // Open a .txt file to write everything to
-    // TODO - ADD PDF NAME
-    std::ofstream outFile("outputAll.txt");
-
-    // catch opening errors
-    if (!outFile.is_open()) {
-        std::cerr << "Failed to open output.txt for writing." << std::endl;
-        return;
-    }
-
-    // Go through the book page by page and get replacements by searching in the map
-    for (const auto pageText : uPdfList) {
-        // a blank page to copy to
-        icu::UnicodeString modText = icu::UnicodeString::fromUTF8("");
-        
-        // For every character in the page
-        for (int32_t charIndex = 0; charIndex < pageText.length(); ) {
-            // Grab the character
-            UChar32 thisChar = pageText.char32At(charIndex);
-
-            // if this char is printable
-            if (uPrintable.find(thisChar) != uPrintable.end()) {
-                // simply copy over and move over by its size
-                modText += thisChar;
-                charIndex += U16_LENGTH(thisChar);  // Move by the length of the character
-            } else if (uNewLines.find(thisChar) != uNewLines.end()) {
-                // if it's a newline-like character, just add a newline
-                UChar32 replacement = u'\n';
-                modText += replacement;
-                charIndex += U16_LENGTH(replacement);  // move over by newline length
-                
-                }else {
-                // otherwise, replace it with its replacement
-                UChar32 replacement = replacementDict[thisChar].replacement;
-                modText += replacement;
-                charIndex += replacement.length();  // you know the drill
-            }
-        }
-        
-        // Convert the page to UTF8 and write to the file
-        std::string utf8Page;
-        modText.toUTF8String(utf8Page);
-        outFile << utf8Page;
-    }
-
-    // Close the file
-    outFile.close();
-}
-*/
 ChoicePage** AppWizard::getChoicePage(){
     return &choicePage;
 
