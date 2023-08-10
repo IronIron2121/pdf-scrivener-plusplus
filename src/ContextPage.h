@@ -31,7 +31,9 @@ class Fl_Multiline_Output;
 
 class ContextPage : public MyPage {
 private:
-    void contextualise();
+
+
+    // -------------- STRUCTS -------------- //
 
     struct ContextWidgets {
         Fl_Box* contextBox;
@@ -45,30 +47,24 @@ private:
         ContextPage* contextPage;
         int indx;
     };
-    UChar32 getCurrBadChar();
-    UChar32 currBadChar;
-    int32_t* bindexHere; // bad char index from parent
+
+    // -------------- NUMERICAL ATTRIBUTES & FUNCTIONS-------------- //
+
+    int* bIndexHere; // bad char index from parent
+
 
     Fl_Window* win;
     Fl_Scroll* scroll;
 
-    std::vector<icu::UnicodeString>* contextList;
-
-
+    std::map<UChar32, std::vector<icu::UnicodeString>>* contextListHere;
 
     Fl_Button* saveBtn;
     Fl_Button* noneBtn;
-    Fl_Button* undoBtn;
-    Fl_Button* submitBtn;
-    
-    // make callbacks for all the buttons
-    static void saveBtnCb();
-    static void noneBtnCb();
-    static void undoBtnCb();
-    static void submitBtnCb();
+
+    Fl_Box* getContextDisplay();
+    Fl_Box* contextDisplay;
 
     void nextContext();
-    void refreshContext();
 
     icu::UnicodeString getCurrentContext();
 
@@ -76,22 +72,22 @@ private:
 
     Fl_Input* replacementInput;
 
-    icu::UnicodeString* uPdfTextHere; // initially extracted text as one long string
+    // variables referenced from parent
     icu::UnicodeString* newPdfTextHere; // cleaned extracted text as one long string
-    std::vector<icu::UnicodeString>* uPdfListHere; // initially extracted text, page by page
     std::vector<icu::UnicodeString>* newPdfListHere; // cleaned extracted text, page by page
+    std::map<UChar32, std::map<icu::UnicodeString, icu::UnicodeString>>* contextDictHere; // replacement info for each bad char
+
     std::vector<icu::UnicodeString> contexts;
 
-    std::map<UChar32, std::map<icu::UnicodeString, icu::UnicodeString>>* contextDictHere; // replacement info for each bad char
-    icu::UnicodeString getConText(int indx, const icu::UnicodeString& pageText);
-    void getContexts(int thisChar);
+    icu::UnicodeString getConText(int32_t indx, const icu::UnicodeString& pageText);
+    void getContexts(UChar32 thisChar);
     void drawThis();
 
     void deleteThis(std::map<icu::UnicodeString, ContextWidgets> contextWidgetsMap);
 
     Fl_Box* testLabel;
 
-    int cIndex;    
+    void contextualise();
     
     icu::UnicodeString* uBadCharsHere; // list of bad characters
     std::unordered_set<UChar32>* uSpaces; // list of "bad" characters that have been uAccounted for
@@ -100,10 +96,13 @@ private:
     std::unordered_set<UChar32>* uNewLines; // list of new line characters
 
     std::map<UChar32, int>* uCharOccursHere; // a pointer to the map of every char and its occurrences
+    UChar32 getCurrBadChar();
+    UChar32 currBadChar;
+    int32_t* cIndexHere;
 
     AppWizard* parent; // parent wizard
 
-    std::pair<int32_t, int32_t> getPointers(int indx, const icu::UnicodeString& pageText, const int32_t thisPageLength);
+    std::pair<int32_t, int32_t> getPointers(int32_t indx, const icu::UnicodeString& pageText, const int32_t thisPageLength);
 
     bool endChecker(UChar32 thisChar, const icu::UnicodeString& enders);
 
@@ -113,18 +112,17 @@ private:
     void initAttributes();
     void processPageText(const icu::UnicodeString& pageText); // process a single page of doc
     void processChar(UChar32 currentChar, bool& leadingWhiteSpace, int32_t charIt); // process a single char of page
-    bool isPrintable(UChar32 currentChar); // check if char is printable / "good"
     void makeOutput(Fl_Multiline_Output* badHere); // print output to console
     void processPage(const icu::UnicodeString& page);
+
+    bool isPrintable(UChar32 currentChar); // check if char is printable / "good"
+
     std::map<icu::UnicodeString, ContextWidgets> contextMap;
-
-    int contexHere;
-
 
 
 public:
-    void newInit();
     ContextPage(int x, int y, int w, int h, AppWizard* parent, const char* title);
+    void newInit(AppWizard** thisParent);
     void testInit(ContextPage* thisPage, int w, int h);
     int x;
     int xGap;
@@ -132,8 +130,10 @@ public:
     int yGap;
     int w;
     int h;
-
-
+    // make callbacks for all the buttons
+    static void saveBtnCb(Fl_Widget* widget, void* data);
+    static void noneBtnCb(Fl_Widget* widget, void* data);
+    void refreshContext();
 };
 
 #endif

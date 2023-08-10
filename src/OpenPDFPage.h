@@ -34,12 +34,11 @@ private:
     Fl_Multiline_Output* badOut; // viewer for bad characters
     Fl_Button* nextBtn; // go to next page button
 
-    // you get a static! you get a static! everyone gets a static!
     icu::UnicodeString* uPdfTextHere; // initially extracted text as one long string
     icu::UnicodeString* newPdfTextHere; // cleaned extracted text as one long string
     std::vector<icu::UnicodeString>* uPdfListHere; // initially extracted text, page by page
     std::vector<icu::UnicodeString>* newPdfListHere; // cleaned extracted text, page by page
-    
+
     ChoicePage** choicePageHere; // pointer to choice page
 
     icu::UnicodeString* uBadChars; // list of bad characters

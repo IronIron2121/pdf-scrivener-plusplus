@@ -5,69 +5,86 @@
 
 
 ChoicePage::ChoicePage(int x, int y, int w, int h, AppWizard* parent, const char* title) : MyPage(x, y, w, h, title) {
+    // init parent and parameter attributes
+    this->parent = parent;
+    this->x = x;
+    this->y = y;
+    this->w = w;
+    this->h = h;
+
+    // init other attributes and pointers
+    this->initPointers();
+    this->initAttributes();
+    this->initDisplays();
+
+    this->end();
+}
+
+void ChoicePage::initAttributes(){
+    // packs of attributes for button callbacks
+    this->pack0 = new choicePack;
+    this->pack0->choice = 0;
+    this->pack0->instance = this;
+
+    this->pack1 = new choicePack;
+    this->pack1->choice = 1;
+    this->pack1->instance = this;
+
+    this->pack2 = new choicePack;
+    this->pack2->choice = 2;
+    this->pack2->instance = this;
+
+    // y-increment gap between each button
+    this->yGap = 100;
+}
+
+void ChoicePage::initPointers(){
+    this->bIndexHere = this->parent->getCIndex();
+    this->uBadCharsHere = this->parent->getUBadChars();
+    this->replacementDictHere = this->parent->getReplacementDict();
+    this->uCharOccursHere = this->parent->getUCharOccurs();
+    this->newPdfTextHere = this->parent->getNewPdfText();
+    this->newPdfListHere = this->parent->getNewPdfList();
+    this->uPrintableHere = this->parent->getUPrintable();
+    this->uNewLinesHere = this->parent->getUNewLines();
+    this->contextPageHere = this->parent->getContextPage();
+    this->contextDictHere = this->parent->getContextDict();
+}
+
+void ChoicePage::initDisplays(){
+
     // Display current bad character
-    std::string displayChar = parent->getDisplayChar();
-    std::string charText = "Current Character: " + displayChar;
-    thisCharLabel = new Fl_Box(x+10, y+10, w-20, 30, charText.c_str());
+    this->displayChar = "N/A";
+    this->charText = "Current Character: ";
+    this->thisCharLabel = new Fl_Box(x+10, y+10, w-20, 30, charText.c_str());
 
-    // Display context for the bad character
-    std::vector<std::string> listOfContexts = parent->getBintexts();
 
-    bindexHere = parent->getBindex();
-    uBadCharsHere = parent->getUBadChars();
-    replacementDictHere = parent->getReplacementDict();
-    uCharOccursHere = parent->getUCharOccurs();
-    newPdfTextHere = parent->getNewPdfText();
-    newPdfListHere = parent->getNewPdfList();
-    uPrintableHere = parent->getUPrintable();
-    uNewLinesHere = parent->getUNewLines();
-    contextPageHere = parent->getContextPage();
-
-    // gap between each context
-    int yGap = 100;
-    
     // create a box for each context
-    for (int context = 0; context < 3; context++) {
-        y = y+yGap;
-        Fl_Box* box = new Fl_Box(x+10, y, w, 70);
-        chartextBoxes.push_back(box);
+    for (int contextIt = 0; contextIt < 3; contextIt++) {
+        this->y = y+yGap;
+        Fl_Box* box = new Fl_Box(this->x+10, this->y, this->w, 70);
+        this->charTextBoxes.push_back(box);
     }
 
-    y = y+yGap;
-
-    choicePack* pack0 = new choicePack;
-    pack0->choice = 0;
-    pack0->instance = this;
-    choicePack* pack1 = new choicePack;
-    pack1->choice = 1;
-    pack1->instance = this;
-    choicePack* pack2 = new choicePack;
-    pack2->choice = 2;
-    pack2->instance = this;
 
     // Buttons for actions
-    goodifyButton = new Fl_Button(x+10, y, w-20, 40, "Do not replace this character");
-    goodifyButton->callback(activateChoiceClick, pack0);
+    // button to replace all instances of this character with itself
+    this->goodifyButton = new Fl_Button(this->x+10, this->y, this->w-20, 40, "Do not replace this character");
+    this->goodifyButton->callback(this->activateChoiceClick, this->pack0);
 
-    y = y+yGap;
-    replaceAllButton = new Fl_Button(x+10, y, w-20, 40, "Replace all instances of this character with input below");
-    replaceAllInput = new Fl_Input(x+10, y+25, w-20, 40, "Replacement: ");
-    replaceAllButton->callback(activateChoiceClick, pack1);\
+    this->y = this->y + this->yGap; // increment y
 
-    y = y+yGap;
-    contextButton = new Fl_Button(x+10, y, w-20, 40, "Choose a different replacement dependent on character context");
-    contextButton->callback(activateChoiceClick, pack2);
+    // button to replace all instances of this character with given input
+    this->replaceAllButton = new Fl_Button(this->x+10, this->y, this->w-20, 40, "Replace all instances of this character with input below");
+    this->replaceAllInput = new Fl_Input(this->x+10, this->y+25, this->w-20, 40, "Replacement: ");
+    this->replaceAllButton->callback(this->activateChoiceClick, this->pack1);
 
-    end();
-}
+    this->y = this->y + this->yGap; // increment y
 
+    // button to replace this character with a different character depending on context it appears in
+    this->contextButton = new Fl_Button(this->x+10, this->y, this->w-20, 40, "Choose a different replacement dependent on character context");
+    this->contextButton->callback(this->activateChoiceClick, this->pack2);
 
-Fl_Box* ChoicePage::getCharLabel() {
-    return thisCharLabel;
-}
-
-std::vector<Fl_Box*> ChoicePage::getChartextBoxes() {
-    return chartextBoxes;
 }
 
 void ChoicePage::activateChoiceClick(Fl_Widget* w, void* data){
@@ -75,6 +92,9 @@ void ChoicePage::activateChoiceClick(Fl_Widget* w, void* data){
     choicePack* pack = static_cast<choicePack*>(data);
     int choice = pack->choice;
     ChoicePage* thisPage = pack->instance;
+
+    // get the current bad character
+    thisPage->currBadChar = thisPage->parent->getCurrBadChar();
 
     // trigger event based on choices
     if(choice == 0){
@@ -87,113 +107,80 @@ void ChoicePage::activateChoiceClick(Fl_Widget* w, void* data){
 }
 
 void ChoicePage::goodifyCb() { 
-    // i apologise sincerely for this. there was no other way
+    // non-contextual replacement 
+    (*(this->replacementDictHere))[this->currBadChar].contextual = false;
 
-    // non-contextual replacement
-    ((*replacementDictHere)[(*uBadCharsHere)[*bindexHere]]).contextual = false;
+    // replacement is the character itself, converted from uChar to uString
+    icu::UnicodeString thisRep = icu::UnicodeString(this->currBadChar);
+    (*(this->replacementDictHere))[this->currBadChar].replacement = thisRep; 
 
-    // replacement is the character itself...converted from uChar to uString
-    icu::UnicodeString thisRep = icu::UnicodeString(getCurrChar());
-
-    ((*replacementDictHere)[(*uBadCharsHere)[*bindexHere]]).replacement = thisRep; 
-
-    icu::UnicodeString postRep = ((*replacementDictHere)[(*uBadCharsHere)[*bindexHere]]).replacement;
-    std::string postRepStr;
-    postRep.toUTF8String(postRepStr);
-    std::cout << "replaced with IN DICT: " << postRepStr << std::endl;
-
-    nextChar();
+    nextChar(); // go to next character
 }
 
 
 void ChoicePage::replaceAllCb() {
     // non-contextual replacement
-    ((*replacementDictHere)[(*uBadCharsHere)[*bindexHere]]).contextual = false;
-    // replace every instance of this character with the user's input
-    // convert input to UChar32
-    std::string inputStr = this->replaceAllInput->value();
-    icu::UnicodeString inputU(inputStr.c_str());
+    (*(this->replacementDictHere))[this->currBadChar].contextual = false;
 
-    ((*replacementDictHere)[(*uBadCharsHere)[*bindexHere]]).replacement = inputU;
-    nextChar();
+    // replace every instance of this character with the user's input
+    std::string inputStr = this->replaceAllInput->value();
+    icu::UnicodeString inputU(inputStr.c_str()); // convert input to unicode string
+
+    // put it in the replacement dictionary
+    (*(this->replacementDictHere))[this->currBadChar].replacement = inputU;
+    
+    nextChar(); // go to next character
 
 }
 
 void ChoicePage::contextCb() {
+    std::cout << "BINDEX ADDRESS IN CHOICE == " << &bIndexHere << std::endl;
     this->hide();
-    (*contextPageHere)->show();
-
+    (**contextPageHere).show();
+    std::cout << "PARENT ADDRESS IN CHOICE == " << &parent << std::endl;
+    (**contextPageHere).newInit(&parent);
 }
-
-
-// get the current character
-UChar32 ChoicePage::getCurrChar() {
-    UChar32 badChar = (*uBadCharsHere)[*bindexHere];
-    return badChar;
-}
-
-std::string ChoicePage::getDisplayChar() {
-    // get the bad character
-    UChar32 badChar = (*uBadCharsHere)[*bindexHere];
-
-    // convert it to a unicode string
-    icu::UnicodeString badCharU(badChar);
-
-    // convert that to a std::string
-    std::string badCharStr;
-    badCharU.toUTF8String(badCharStr);
-
-    // return the std::string
-    return badCharStr;
-}
-
 
 void ChoicePage::nextChar() {
     // increment the bad character index
-    (*bindexHere)++;
-    // std::cout << "bindexHere Next Char: " << *bindexHere << std::endl;
+    this->parent->upBIndex();
+    // std::cout << "\nbIndexHere Next Char:" << *bIndexHere << std::endl;
 
     // if the bad character index is greater than the number of bad characters
-    if(*bindexHere >= (*uBadCharsHere).length()) {
+    if(*(this->bIndexHere) >= (*(this->uBadCharsHere)).length()) {
         std::cout << "Going for replacements!" << std::endl;
         // start replacing the bad characters
-        doReplacements();
+        this->doReplacements();
     } else {
         // otherwise refresh the page values
-        refreshVals(); 
+        this->refreshVals(); 
     }
 }
 
-
+// update the values on page
 void ChoicePage::refreshVals() {
     // update bad char display
-    std::string newText = "Current Character: " + std::string(getDisplayChar());
+    std::string newText = "Current Character: " + std::string(this->parent->getDisplayChar());
     std::cout << "new text: " << newText << std::endl;
+    this->thisCharLabel->copy_label(newText.c_str());
 
-    Fl_Box *thisCharLabel = getCharLabel();
-    thisCharLabel->copy_label(newText.c_str());
+    // get a list of contexts for the current bad character
+    std::vector<std::string> listOfContexts = this->parent->getBintexts();
 
-
-    // grab the character context boxes
-    std::vector<Fl_Box*> chartextBoxes = getChartextBoxes();
-
-    // get the contexts for the current bad character
-    std::vector<std::string> listOfContexts = getBintexts();
-
+    // get the size of the list and the boxes    
     int listSize = listOfContexts.size();
-    int boxSize = chartextBoxes.size();
-    int listBoxRange = listSize - boxSize;
+    int boxSize = charTextBoxes.size();
 
     // update contexts display
     for (int i = 0; i < listOfContexts.size(); i++) {
-        std::cout << "copying label at index " << i << std::endl;
-        std::cout << "label: " << listOfContexts[i].c_str() << std::endl;
-        chartextBoxes[i]->copy_label(listOfContexts[i].c_str());
+        //std::cout << "copying label at index " << i << std::endl;
+        //std::cout << "label: " << listOfContexts[i].c_str() << std::endl;
+        this->charTextBoxes[i]->copy_label(listOfContexts[i].c_str());
     }
     // if there's an empty box, fill it with N/A
     if (listSize < boxSize) {
         for (int i = listSize; i < boxSize; i++) {
-            chartextBoxes[i]->copy_label("N/A");
+            this->charTextBoxes[i]->copy_label("N/A");
         }
     }
 }
@@ -244,55 +231,15 @@ icu::UnicodeString ChoicePage::justContext(int indx, const icu::UnicodeString& p
 
     return context;
 }
-std::tuple<std::string, int, int, icu::UnicodeString> ChoicePage::getConText(int indx, const icu::UnicodeString& pageText) {
-    int32_t thisPageLength = pageText.length();
 
-    // error handling
-    if (indx < 0 || indx >= thisPageLength) {
-        std::cerr << "bad index with: " << indx << std::endl;
-        return std::make_tuple("", -1, -1, "");
-    }
-
-    // get the pointers for this run and assign them
-    std::pair<int32_t,int32_t> pointers = getPointers(indx, pageText, thisPageLength);
-    int32_t leftPointer = pointers.first;
-    int32_t rightPointer = pointers.second;
-
-    // get the relative position of the bad character
-    int32_t leftDiff = indx - leftPointer;
-
-    // construct a string that tells users which char in a string they're meant to be looking at
-    icu::UnicodeString posNotif = "Pos: ";
-    icu::UnicodeString strNumber = icu::UnicodeString::fromUTF8(std::to_string(leftDiff + 1));
-    posNotif += strNumber;
-    posNotif += " ";
-
-    // extract the context 
-    icu::UnicodeString context = pageText.tempSubString(leftPointer, rightPointer - leftPointer);
-    // get the size of the context
-    int32_t contextSize = context.length();
-
-    // combine positional information with context phrase, then convert to std::string
-    icu::UnicodeString combined = posNotif + "\n" + context;
-    std::string combinedStr;
-    combined.toUTF8String(combinedStr);
-
-    // pack together the context and the relative position of the bad character
-    std::tuple<std::string, int, int, icu::UnicodeString> thisOut = std::make_tuple(combinedStr, leftDiff, contextSize, context);
-
-    return thisOut;
-}
 std::vector<std::string> ChoicePage::getBintexts() {
-    // if bindex is out of bounds, return an empty vector
-    if (*bindexHere >= (*uBadCharsHere).length()) {
-        std::cout << "bindex out of bounds at getBintexts()" << std::endl;
+    // if bIndex is out of bounds, return an empty vector
+    if (*(this->bIndexHere) >= (*(this->uBadCharsHere)).length()) {
+        std::cout << "bIndex out of bounds at getBintexts()" << std::endl;
         return {};
     } else{
-        // otherwise, get the current bad character
-        UChar32 realBadChar = getCurrChar();
-
         // get whichever is number is smaller - number of char occurences, or 3
-        int numExamples = std::min((*uCharOccursHere)[realBadChar], 3);
+        int numExamples = std::min((*(this->uCharOccursHere))[this->currBadChar], 3);
 
         // var to store the indices of the bad characters
         std::vector<int32_t> indices;
@@ -303,7 +250,7 @@ std::vector<std::string> ChoicePage::getBintexts() {
         // for every example we wanna make
         for(int i = 0; i < numExamples; i++) {
             // try to find the next occurrence of this character
-            int32_t thisDex = (*newPdfTextHere).indexOf(realBadChar, minDex);
+            int32_t thisDex = (*(this->newPdfTextHere)).indexOf(this->currBadChar, minDex);
 
             // if we found it, add it to the list of indices
             if (thisDex != std::string::npos) {
@@ -315,7 +262,7 @@ std::vector<std::string> ChoicePage::getBintexts() {
         // get the context of each bad character
         std::vector<std::string> contextList;
         for(int i = 0; i < indices.size(); i++) {
-            std::tuple<std::string, int, int, icu::UnicodeString> contOut= getConText(indices[i], (*newPdfTextHere));
+            std::tuple<std::string, int, int, icu::UnicodeString> contOut= getConText(indices[i], (*(this->newPdfTextHere)));
             std::string thisContext = std::get<0>(contOut);
             int thisPos = std::get<1>(contOut);
             int thisLength = std::get<2>(contOut);
@@ -385,10 +332,9 @@ void ChoicePage::doReplacements(){
                     icu::UnicodeString context = std::get<3>(conText);
                     // TODO: index into the context dictionary
 
-                    //icu::UnicodeString replacement = (*contextDictHere)[thisChar][context];
-                    // modText += replacement;
-                    // charIndex += U16_LENGTH(thisChar);  // you know the drill
-
+                    icu::UnicodeString replacement = (*contextDictHere)[thisChar][context];
+                    modText += replacement;
+                    charIndex += U16_LENGTH(thisChar);  // iterate past the character
                 }
 
                 /*

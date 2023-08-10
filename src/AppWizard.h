@@ -35,7 +35,7 @@ private:
 
     std::vector<icu::UnicodeString> uPdfList; // initially extracted text, page by page
     std::vector<icu::UnicodeString> newPdfList; // cleaned extracted text, page by page
-    std::vector<icu::UnicodeString> contextList;
+    std::map<UChar32, std::vector<icu::UnicodeString>> contextList;
 
     std::unordered_set<UChar32> uSpaces; // list of "good" characters
     std::unordered_set<UChar32> uPrintable; // list of "good" characters
@@ -48,12 +48,13 @@ private:
 public:
     AppWizard(int w, int h, const char* title = 0);
 
-    int32_t bindex; // current bad character index
-
+    int bIndex; // current bad character index
+    int32_t cIndex;
+    int32_t* getCIndex();
+    int* getBIndex(); // returns current bad character index
 
     // getter methods
-    int32_t* getBindex(); // returns current bad character index
-    void upBindex(); // increment bindex
+    void upBIndex(); // increment bIndex
 
     // get replacement dictionary
     std::map<UChar32, ReplacementInfo>* getReplacementDict(); 
@@ -65,8 +66,8 @@ public:
 
     std::string getDisplayChar(); // get the character to display on choice page
 
-    UChar32 getBadChar(); // gets the current bad character
-    std::string getConText(int indx, const icu::UnicodeString& pageText); // get context for given bindex
+    UChar32 getCurrBadChar(); // gets the current bad character
+    std::tuple<std::string, int, int, icu::UnicodeString> getConText(int indx, const icu::UnicodeString& pageText); // get context for given bIndex
 
     std::unordered_set<UChar32>* getUSpaces();
     std::unordered_set<UChar32>* getUNewLines();
@@ -81,15 +82,13 @@ public:
     icu::UnicodeString* getNewPdfText(); // gets the processed pdf text (single string)
     std::vector<icu::UnicodeString>* getUPdfList(); // gets the pdf pages (list of strings)
     std::vector<icu::UnicodeString>* getNewPdfList(); // gets the pdf pages (list of strings)
-    std::vector<icu::UnicodeString>* getContextList();
+    std::map<UChar32, std::vector<icu::UnicodeString>>* getContextList();
     void pushToUPdfText(icu::UnicodeString pageText); // push to it
     void pushToUPdfList(icu::UnicodeString pageText); // push provided text to the book
     void pushToNewPdfText(icu::UnicodeString pageText); // push to it
     void pushToNewPdfList(icu::UnicodeString pageText); // push provided text to the book
-    
 
-
-    std::vector<std::string> getBintexts(); // a list of contexts for given bindex
+    std::vector<std::string> getBintexts(); // a list of contexts for given bIndex
 
 
     std::map<UChar32, int>* getUCharOccurs(); // gets character occurences
@@ -109,11 +108,13 @@ public:
     std::map<UChar32, std::map<icu::UnicodeString, icu::UnicodeString>>* getContextDict();
 
 
+
     // utils
     bool endChecker(UChar32 thisChar, const icu::UnicodeString& enders); // check if a char is an ender
      // get pointers for context
     std::pair<int32_t,int32_t> getPointers(int indx, const icu::UnicodeString& pageText, const int32_t thisPageLength);
     void doReplacements();
+    ~AppWizard();
 };
 
 

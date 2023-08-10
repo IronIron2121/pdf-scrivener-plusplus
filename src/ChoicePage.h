@@ -28,15 +28,35 @@ class ContextPage;
 
 class ChoicePage : public MyPage {
 private:
+    AppWizard* parent;
+
+
+    struct choicePack {
+        int choice;
+        ChoicePage* instance ;
+    };
+
+    choicePack* pack0;
+    choicePack* pack1;
+    choicePack* pack2;
+
+
+
     int x;
+    int xGap;
     int y;
+    int yGap;
     int w;
     int h;
+
+    int* bIndexHere; // bad char index from parent
+
+    std::string displayChar;
+    std::string charText;
+
+
     Fl_Box* thisCharLabel;
-    std::vector<Fl_Box*> chartextBoxes;
-
-
-    int32_t* bindexHere; // bad char index from parent
+    std::vector<Fl_Box*> charTextBoxes;
 
     icu::UnicodeString* uBadCharsHere; // list of bad characters from parent
     icu::UnicodeString* newPdfTextHere; // initially extracted text as one long string from parent
@@ -47,6 +67,7 @@ private:
     std::unordered_set<UChar32>* uPrintableHere;
     std::unordered_set<UChar32>* uNewLinesHere;
     UChar32 getCurrChar();
+    UChar32 currBadChar;
     ContextPage** contextPageHere;
 
     // pointer to wizard dictionary
@@ -55,6 +76,8 @@ private:
     void doReplacements();
     ChoicePage* choicePage; 
 
+    std::map<UChar32, std::map<icu::UnicodeString, icu::UnicodeString>>* contextDictHere;
+
 
     bool endChecker(UChar32 thisChar, const icu::UnicodeString& enders);
     std::pair<int32_t,int32_t> getPointers(int indx, const icu::UnicodeString& pageText, const int32_t thisPageLength);
@@ -62,35 +85,32 @@ private:
     std::vector<std::string> getBintexts();
 
     std::map<UChar32, ReplacementInfo>* replacementDictHere; // replacement info for each bad char
-    
+
+
+    Fl_Box* charLabel;
     Fl_Button* goodifyButton; // don't replace
     Fl_Button* replaceAllButton; // replace everything with input
     Fl_Input* replaceAllInput; // input for the above
     Fl_Button* contextButton; // replace based on context
 
-    std::vector<Fl_Box*> getChartextBoxes(); // get context boxes for current character
+    std::vector<Fl_Box*> getCharTextBoxes(); // get context boxes for current character
 
     icu::UnicodeString justContext(int indx, const icu::UnicodeString& pageText);
 
-
-
     int numCharBoxes; // number of character boxes
 
-    struct choicePack {
-        int choice;
-        ChoicePage* instance ;
-    };
 
     void goodifyCb(); // replace bad char with itself
     void replaceAllCb(); // replace bad char with user input
     void contextCb(); // replace bad char contextually
     void nextChar(); // go-to next bad character
 
-    // this object is a child of the prodigious AppWizard
-    AppWizard* parent; 
 
 public:
     ChoicePage(int x, int y, int w, int h,  AppWizard* parent, const char* title = 0);
+    void initAttributes(); // initialize attributes
+    void initDisplays();
+    void initPointers();
     
     Fl_Box* getCharLabel(); // get string for current character
 
