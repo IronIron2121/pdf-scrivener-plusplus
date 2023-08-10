@@ -35,6 +35,7 @@ private:
 
     std::vector<icu::UnicodeString> uPdfList; // initially extracted text, page by page
     std::vector<icu::UnicodeString> newPdfList; // cleaned extracted text, page by page
+    std::vector<icu::UnicodeString> contextList;
 
     std::unordered_set<UChar32> uSpaces; // list of "good" characters
     std::unordered_set<UChar32> uPrintable; // list of "good" characters
@@ -60,6 +61,7 @@ public:
     void getSets(std::unordered_set<UChar32>& set, const std::string& stdStr);
 
     ChoicePage** getChoicePage(); // get pointer to choice page
+    ContextPage** getContextPage(); // get pointer to choice page
 
     std::string getDisplayChar(); // get the character to display on choice page
 
@@ -75,11 +77,11 @@ public:
     icu::UnicodeString getGivenBadChar(int index); // gets bad char given index
     icu::UnicodeString* getUBadChars(); // return list of bad characters by reference
 
-
     icu::UnicodeString* getUPdfText(); // gets the initial pdf text (single string)
     icu::UnicodeString* getNewPdfText(); // gets the processed pdf text (single string)
     std::vector<icu::UnicodeString>* getUPdfList(); // gets the pdf pages (list of strings)
     std::vector<icu::UnicodeString>* getNewPdfList(); // gets the pdf pages (list of strings)
+    std::vector<icu::UnicodeString>* getContextList();
     void pushToUPdfText(icu::UnicodeString pageText); // push to it
     void pushToUPdfList(icu::UnicodeString pageText); // push provided text to the book
     void pushToNewPdfText(icu::UnicodeString pageText); // push to it

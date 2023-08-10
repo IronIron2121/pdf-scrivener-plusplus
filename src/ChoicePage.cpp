@@ -21,6 +21,7 @@ ChoicePage::ChoicePage(int x, int y, int w, int h, AppWizard* parent, const char
     newPdfListHere = parent->getNewPdfList();
     uPrintableHere = parent->getUPrintable();
     uNewLinesHere = parent->getUNewLines();
+    contextPageHere = parent->getContextPage();
 
     // gap between each context
     int yGap = 100;
@@ -82,7 +83,6 @@ void ChoicePage::activateChoiceClick(Fl_Widget* w, void* data){
         thisPage->replaceAllCb();
     } else if(choice == 2){
         thisPage->contextCb();
-
     }
 }
 
@@ -120,9 +120,9 @@ void ChoicePage::replaceAllCb() {
 }
 
 void ChoicePage::contextCb() {
-    ContextPage* thisContextPage = new ContextPage(0, 0, 1000, 800, parent, "Contextual Replacement");
-    thisContextPage->newInit();  // Refresh before showing.
-    thisContextPage->show();
+    this->hide();
+    (*contextPageHere)->show();
+
 }
 
 

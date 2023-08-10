@@ -33,13 +33,6 @@ class ContextPage : public MyPage {
 private:
     void contextualise();
 
-    int x;
-    int xGap;
-    int y;
-    int yGap;
-    int w;
-    int h;
-
     struct ContextWidgets {
         Fl_Box* contextBox;
         Fl_Input* replacementInput;
@@ -52,32 +45,36 @@ private:
         ContextPage* contextPage;
         int indx;
     };
-    
-
-
+    UChar32 getCurrBadChar();
+    UChar32 currBadChar;
+    int32_t* bindexHere; // bad char index from parent
 
     Fl_Window* win;
     Fl_Scroll* scroll;
-    std::vector<Fl_Input*> inputs;
-    std::vector<Fl_Button*> noneButtons;
-    std::vector<Fl_Button*> undoButtons;
-    std::vector<Fl_Button*> submitAllBtn;
+
+    std::vector<icu::UnicodeString>* contextList;
+
 
 
     Fl_Button* saveBtn;
     Fl_Button* noneBtn;
     Fl_Button* undoBtn;
     Fl_Button* submitBtn;
+    
+    // make callbacks for all the buttons
+    static void saveBtnCb();
+    static void noneBtnCb();
+    static void undoBtnCb();
+    static void submitBtnCb();
 
-    std::vector<Fl_Button*> saveBtns; // save replacement
-    std::vector<Fl_Button*> noneBtns; // no replacement
-    std::vector<Fl_Button*> undoBtns; // undo choice
-    std::vector<Fl_Input*> replacementInputs; // input for the above
+    void nextContext();
+    void refreshContext();
 
-    std::vector<Fl_Box*> contextBoxes;
+    icu::UnicodeString getCurrentContext();
+
+
 
     Fl_Input* replacementInput;
-
 
     icu::UnicodeString* uPdfTextHere; // initially extracted text as one long string
     icu::UnicodeString* newPdfTextHere; // cleaned extracted text as one long string
@@ -92,15 +89,17 @@ private:
 
     void deleteThis(std::map<icu::UnicodeString, ContextWidgets> contextWidgetsMap);
 
+    Fl_Box* testLabel;
 
+    int cIndex;    
     
-    icu::UnicodeString* uBadChars; // list of bad characters
+    icu::UnicodeString* uBadCharsHere; // list of bad characters
     std::unordered_set<UChar32>* uSpaces; // list of "bad" characters that have been uAccounted for
     std::unordered_set<UChar32>* uPrintable; // list of "good" characters
     std::unordered_set<UChar32>* uPrintablePlus; // uPrintable + extras
     std::unordered_set<UChar32>* uNewLines; // list of new line characters
 
-    std::map<UChar32, int>* uCharOccurs; // a pointer to the map of every char and its occurrences
+    std::map<UChar32, int>* uCharOccursHere; // a pointer to the map of every char and its occurrences
 
     AppWizard* parent; // parent wizard
 
@@ -119,11 +118,21 @@ private:
     void processPage(const icu::UnicodeString& page);
     std::map<icu::UnicodeString, ContextWidgets> contextMap;
 
+    int contexHere;
+
 
 
 public:
     void newInit();
     ContextPage(int x, int y, int w, int h, AppWizard* parent, const char* title);
+    void testInit(ContextPage* thisPage, int w, int h);
+    int x;
+    int xGap;
+    int y;
+    int yGap;
+    int w;
+    int h;
+
 
 };
 

@@ -22,6 +22,8 @@ AppWizard::AppWizard(int w, int h, const char* title) : Fl_Window(w, h, title) {
     getSets(uNewLines, newLines);
     getSets(uPrintablePlus, printablePlus);
 
+
+
     // initialise val for bad characters
     uBadChars = icu::UnicodeString::fromUTF8("");
     // badCharsCh = {}; // list of bad characters
@@ -47,7 +49,7 @@ AppWizard::AppWizard(int w, int h, const char* title) : Fl_Window(w, h, title) {
     bindex = 0;
 
     // end the wizard
-    wizard->end();
+    //wizard->end();
 }
 
 int32_t* AppWizard::getBindex() {
@@ -99,6 +101,7 @@ UChar32 AppWizard::getBadChar(){
     std::cerr << "Error: bindex exceeds uBadChars length. bindex: " << bindex << ", uBadChars length: " << uBadChars.length() << std::endl;
     return uBadChars[bindex];
 }
+
 
 icu::UnicodeString AppWizard::getGivenBadChar(int index) {
     return uBadChars[index];
@@ -305,5 +308,12 @@ icu::UnicodeString* AppWizard::getUBadChars(){
 
 ChoicePage** AppWizard::getChoicePage(){
     return &choicePage;
-
 } 
+
+ContextPage** AppWizard::getContextPage(){
+    return &contextPage;
+} 
+
+std::vector<icu::UnicodeString>* AppWizard::getContextList(){
+    return &contextList;
+}

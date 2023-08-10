@@ -28,6 +28,10 @@ class ContextPage;
 
 class ChoicePage : public MyPage {
 private:
+    int x;
+    int y;
+    int w;
+    int h;
     Fl_Box* thisCharLabel;
     std::vector<Fl_Box*> chartextBoxes;
 
@@ -43,7 +47,7 @@ private:
     std::unordered_set<UChar32>* uPrintableHere;
     std::unordered_set<UChar32>* uNewLinesHere;
     UChar32 getCurrChar();
-
+    ContextPage** contextPageHere;
 
     // pointer to wizard dictionary
     // combined structure to store and easily access replacement infos during replacement
@@ -63,8 +67,6 @@ private:
     Fl_Button* replaceAllButton; // replace everything with input
     Fl_Input* replaceAllInput; // input for the above
     Fl_Button* contextButton; // replace based on context
-
-
 
     std::vector<Fl_Box*> getChartextBoxes(); // get context boxes for current character
 
