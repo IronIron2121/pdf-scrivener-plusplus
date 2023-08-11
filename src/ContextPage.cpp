@@ -34,7 +34,6 @@ void ContextPage::initAttributes(){
 }
 
 void ContextPage::initDisplays(){
-
     this->x += this->xGap;
     // display the current context using Fl_Box
     this->contextDisplay = new Fl_Box(this->x + 200, this->y, 90, 60, "init");

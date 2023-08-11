@@ -3,13 +3,18 @@
 #include "OpenPDFPage.h"
 #include "ChoicePage.h"
 #include "ContextPage.h"
+#include <fstream>
+#include <filesystem>
+
+using namespace std::filesystem;
 
 AppWizard::AppWizard(int w, int h, const char* title) : Fl_Window(w, h, title) {
     this->wizard = new Fl_Wizard(0, 0, w, h);
     this->openPage = new OpenPDFPage(0, 0, w, h, this, "PDF Scrivener - Open PDF");
     this->choicePage = new ChoicePage(0, 0, w, h, this, "PDF Scrivener - Choice Page");
     this->contextPage = new ContextPage(0, 0, w, h, this, "PDF Scrivener - Context Page");
-    //uCharOccurs = new std::map<UChar32, int>;
+
+    this->pdfName = "";
 
     // string expressions of our lists of acceptable characters
     this->spaces = " ";
@@ -55,6 +60,14 @@ AppWizard::AppWizard(int w, int h, const char* title) : Fl_Window(w, h, title) {
 
 AppWizard::~AppWizard(){
     std::cout << "AppWizard destructor called" << std::endl;
+}
+
+std::string* AppWizard::getPdfName(){
+    return &(this->pdfName);
+}
+
+void AppWizard::setPdfName(std::string givenName){
+    this->pdfName = givenName;
 }
 
 // returns uSPaces
@@ -386,20 +399,25 @@ icu::UnicodeString AppWizard::getCurrentContext(){
 }
 
 void AppWizard::doReplacements(){
-    // Open a .txt file to write everything to
-    // TODO - ADD PDF NAME HERE
-    std::ofstream outFile("outputAll.txt");
+    path outAll = path((this->pdfName).c_str()); 
+    path outAllName = path(outAll / path((this->pdfName + "OutputAll.txt").c_str()));
 
-    // catch opening errors
-    if (!outFile.is_open()) {
-        std::cerr << "Failed to open output.txt for writing." << std::endl;
-        return;
+    // create directory if it doesn't already exist
+    if(!std::filesystem::exists(outAll)) {
+        std::filesystem::create_directory(outAll);
     }
+
+    // Open a .txt at the path to write everything to
+    std::ofstream outAllFile(outAllName);
 
     int i = 0;
     // Go through the book page by page and get replacements by searching in the map
     for (const auto& pageText : newPdfList) {
         i++;
+        // init and open a new file for this page
+        path thisPageOut(outAll / std::to_string(i)); // construct the path to the output directory
+        std::ofstream outPageFile(path(path(outAll) / path((this->pdfName + "Page" + std::to_string(i) + ".txt").c_str())));
+        
         // a blank page to copy to
         icu::UnicodeString modText = icu::UnicodeString::fromUTF8("");
         
@@ -443,15 +461,19 @@ void AppWizard::doReplacements(){
             }
         }
         
-        // Convert the page to UTF8 and write to the file
+        // Convert the page to UTF8 and write to the files
         std::string utf8Page;
         modText.toUTF8String(utf8Page);
-        outFile << utf8Page;
+
+        outPageFile << utf8Page;
+        outPageFile.close();
+
+        outAllFile << utf8Page;
     }
 
     std::cout << "Done!" << std::endl;
 
     // Close the file
-    outFile.close();
+    outAllFile.close();
 
 }

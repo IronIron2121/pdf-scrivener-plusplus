@@ -21,7 +21,7 @@ private:
     Fl_Wizard* wizard;
 
 
-
+    std::string pdfName; // store the name of the pdf
     std::string spaces; // list of "good" characters
     std::string printable; // list of "good" characters
     std::string printablePlus; // uPrintable + extras
@@ -82,6 +82,8 @@ public:
     icu::UnicodeString* getUBadChars(); // returns whole list of bad characters
 
     // functions to and access retrieve our pdf texts
+    std::string* getPdfName(); // return the title of the pdf
+    void setPdfName(std::string givenName); // set the title of the pdf
     icu::UnicodeString* getUPdfText(); // gets the initial pdf text (single string)
     icu::UnicodeString* getNewPdfText(); // gets the processed pdf text (single string)
     std::vector<icu::UnicodeString>* getUPdfList(); // gets the initial pdf text (list of strings)

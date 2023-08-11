@@ -1,5 +1,6 @@
 #include "OpenPDFPage.h"
 #include "AppWizard.h"
+#include <filesystem>
 
 OpenPDFPage::OpenPDFPage(int x, int y, int w, int h, AppWizard* parent, const char* title) : MyPage(x, y, w, h, title) {
     // set parent
@@ -65,10 +66,16 @@ void OpenPDFPage::loadPDFDoc(){
     // if it's a valid file
     if (!thisPDF) {
         std::cout << "No PDF selected" << std::endl;
+    } else{
+        // load path into filesystem path
+        std::filesystem::path path(thisPDF);
+        // remove the extension and the parents
+        std::string justName = path.stem().string();
+        std::cout << "Loaded " << justName << std::endl;
+        this->parent->setPdfName(justName);
     }
 
     // try to load it as a PDF
-    std::cout << "Selected PDF: " << thisPDF << std::endl;
     std::unique_ptr<poppler::document> popplerDoc(poppler::document::load_from_file(thisPDF)); // load the PDF
 
     // if the loaded PDF is valid, then parse it and extract text
