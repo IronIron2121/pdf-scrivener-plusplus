@@ -39,25 +39,17 @@ void ChoicePage::initAttributes(){
 }
 
 void ChoicePage::initPointers(){
-    this->bIndexHere = this->parent->getCIndex();
+    this->bIndexHere = this->parent->getBIndex();
     this->uBadCharsHere = this->parent->getUBadChars();
     this->replacementDictHere = this->parent->getReplacementDict();
-    this->uCharOccursHere = this->parent->getUCharOccurs();
-    this->newPdfTextHere = this->parent->getNewPdfText();
-    this->newPdfListHere = this->parent->getNewPdfList();
-    this->uPrintableHere = this->parent->getUPrintable();
-    this->uNewLinesHere = this->parent->getUNewLines();
     this->contextPageHere = this->parent->getContextPage();
-    this->contextDictHere = this->parent->getContextDict();
 }
 
 void ChoicePage::initDisplays(){
-
     // Display current bad character
     this->displayChar = "N/A";
-    this->charText = "Current Character: ";
-    this->thisCharLabel = new Fl_Box(x+10, y+10, w-20, 30, charText.c_str());
-
+    this->charText = "Character: ";
+    this->charLabel = new Fl_Box(x+10, y+10, w-20, 30, charText.c_str());
 
     // create a box for each context
     for (int contextIt = 0; contextIt < 3; contextIt++) {
@@ -66,28 +58,28 @@ void ChoicePage::initDisplays(){
         this->charTextBoxes.push_back(box);
     }
 
+    this->y = this->y + this->yGap; // increment y
 
     // Buttons for actions
     // button to replace all instances of this character with itself
     this->goodifyButton = new Fl_Button(this->x+10, this->y, this->w-20, 40, "Do not replace this character");
     this->goodifyButton->callback(this->activateChoiceClick, this->pack0);
 
-    this->y = this->y + this->yGap; // increment y
+    this->y = this->y + this->yGap; 
 
     // button to replace all instances of this character with given input
     this->replaceAllButton = new Fl_Button(this->x+10, this->y, this->w-20, 40, "Replace all instances of this character with input below");
     this->replaceAllInput = new Fl_Input(this->x+10, this->y+25, this->w-20, 40, "Replacement: ");
     this->replaceAllButton->callback(this->activateChoiceClick, this->pack1);
 
-    this->y = this->y + this->yGap; // increment y
+    this->y = this->y + this->yGap;
 
     // button to replace this character with a different character depending on context it appears in
     this->contextButton = new Fl_Button(this->x+10, this->y, this->w-20, 40, "Choose a different replacement dependent on character context");
     this->contextButton->callback(this->activateChoiceClick, this->pack2);
-
 }
 
-void ChoicePage::activateChoiceClick(Fl_Widget* w, void* data){
+void ChoicePage::activateChoiceClick(Fl_Widget* widget, void* data){
     // get the passed pack, and unpack it
     choicePack* pack = static_cast<choicePack*>(data);
     int choice = pack->choice;
@@ -134,23 +126,22 @@ void ChoicePage::replaceAllCb() {
 }
 
 void ChoicePage::contextCb() {
-    std::cout << "BINDEX ADDRESS IN CHOICE == " << &bIndexHere << std::endl;
+    // contextual replacement
+    (*(this->replacementDictHere))[this->currBadChar].contextual = true;
+
     this->hide();
-    (**contextPageHere).show();
-    std::cout << "PARENT ADDRESS IN CHOICE == " << &parent << std::endl;
-    (**contextPageHere).newInit(&parent);
+    this->parent->contextPage->newInit();
+    this->parent->contextPage->show();
 }
 
 void ChoicePage::nextChar() {
     // increment the bad character index
     this->parent->upBIndex();
-    // std::cout << "\nbIndexHere Next Char:" << *bIndexHere << std::endl;
 
     // if the bad character index is greater than the number of bad characters
-    if(*(this->bIndexHere) >= (*(this->uBadCharsHere)).length()) {
-        std::cout << "Going for replacements!" << std::endl;
+    if(*(this->bIndexHere) >= this->uBadCharsHere->length()) {
         // start replacing the bad characters
-        this->doReplacements();
+        this->parent->doReplacements();
     } else {
         // otherwise refresh the page values
         this->refreshVals(); 
@@ -160,12 +151,11 @@ void ChoicePage::nextChar() {
 // update the values on page
 void ChoicePage::refreshVals() {
     // update bad char display
-    std::string newText = "Current Character: " + std::string(this->parent->getDisplayChar());
-    std::cout << "new text: " << newText << std::endl;
-    this->thisCharLabel->copy_label(newText.c_str());
+    std::string newText = "Character " + std::to_string((this->parent->bIndex) + 1) + "/" + std::to_string(this->uBadCharsHere->length()) + ": " + std::string(this->parent->getDisplayChar() + ", with " + std::to_string(this->parent->getUCharOccur(this->parent->getCurrBadChar())) + " occurrences");
+    this->charLabel->copy_label(newText.c_str());
 
     // get a list of contexts for the current bad character
-    std::vector<std::string> listOfContexts = this->parent->getBintexts();
+    std::vector<std::string> listOfContexts = this->parent->getListOfContexts();
 
     // get the size of the list and the boxes    
     int listSize = listOfContexts.size();
@@ -173,8 +163,6 @@ void ChoicePage::refreshVals() {
 
     // update contexts display
     for (int i = 0; i < listOfContexts.size(); i++) {
-        //std::cout << "copying label at index " << i << std::endl;
-        //std::cout << "label: " << listOfContexts[i].c_str() << std::endl;
         this->charTextBoxes[i]->copy_label(listOfContexts[i].c_str());
     }
     // if there's an empty box, fill it with N/A
@@ -185,178 +173,3 @@ void ChoicePage::refreshVals() {
     }
 }
 
-bool ChoicePage::endChecker(UChar32 thisChar, const icu::UnicodeString& enders) {
-    // if this character is an ender, return true
-    return enders.indexOf(thisChar) != -1;
-}
-std::pair<int32_t,int32_t> ChoicePage::getPointers(int indx, const icu::UnicodeString& pageText, const int32_t thisPageLength){
-    // characters that end a sentence
-    icu::UnicodeString enders = u" .,\n";
-    // init context span indices
-    int32_t leftPointer = indx;
-    int32_t rightPointer = indx;
-    // find the leftmost limit of the context
-    while(!endChecker(pageText.charAt(leftPointer-1), enders) && leftPointer > 0) {
-        leftPointer--;
-    }
-    // find the rightmost limit of the context
-    while(!endChecker(pageText[rightPointer], enders) && rightPointer < thisPageLength-1) {
-        rightPointer++;
-    }
-
-    // make them into a pair and return
-    std::pair<int32_t,int32_t> this_out = std::make_pair(leftPointer, rightPointer);
-    return this_out;
-}
-// just returns the context
-icu::UnicodeString ChoicePage::justContext(int indx, const icu::UnicodeString& pageText) {
-    int32_t thisPageLength = pageText.length();
-
-    // error handling
-    if (indx < 0 || indx >= thisPageLength) {
-        std::cerr << "bad index with: " << indx << std::endl;
-        return icu::UnicodeString("");
-    }
-
-    // get the pointers for this run and assign them
-    std::pair<int32_t,int32_t> pointers = getPointers(indx, pageText, thisPageLength);
-    int32_t leftPointer = pointers.first;
-    int32_t rightPointer = pointers.second;
-
-    // get the relative position of the bad character
-    int32_t leftDiff = indx - leftPointer;
-
-    // extract the context 
-    icu::UnicodeString context = pageText.tempSubString(leftPointer, rightPointer - leftPointer);
-
-    return context;
-}
-
-std::vector<std::string> ChoicePage::getBintexts() {
-    // if bIndex is out of bounds, return an empty vector
-    if (*(this->bIndexHere) >= (*(this->uBadCharsHere)).length()) {
-        std::cout << "bIndex out of bounds at getBintexts()" << std::endl;
-        return {};
-    } else{
-        // get whichever is number is smaller - number of char occurences, or 3
-        int numExamples = std::min((*(this->uCharOccursHere))[this->currBadChar], 3);
-
-        // var to store the indices of the bad characters
-        std::vector<int32_t> indices;
-
-        // try to .find() the bad character in the pdfText - starting from char 0
-        int32_t minDex = 0;
-
-        // for every example we wanna make
-        for(int i = 0; i < numExamples; i++) {
-            // try to find the next occurrence of this character
-            int32_t thisDex = (*(this->newPdfTextHere)).indexOf(this->currBadChar, minDex);
-
-            // if we found it, add it to the list of indices
-            if (thisDex != std::string::npos) {
-                indices.push_back(thisDex);
-                minDex = thisDex + 1;
-            }
-        }
-
-        // get the context of each bad character
-        std::vector<std::string> contextList;
-        for(int i = 0; i < indices.size(); i++) {
-            std::tuple<std::string, int, int, icu::UnicodeString> contOut= getConText(indices[i], (*(this->newPdfTextHere)));
-            std::string thisContext = std::get<0>(contOut);
-            int thisPos = std::get<1>(contOut);
-            int thisLength = std::get<2>(contOut);
-
-            // create an underline the same length as the context
-            std::string underLine(thisLength, '_');
-            // turn position corresponding to bad character into an arrow
-            underLine[thisPos] = '^';
-            // add the underline to the context, then push context to list of contexts
-            thisContext += "\n" + underLine;
-            contextList.push_back(thisContext);
-        }
-
-        // return a vector containing the index of the bad character
-        return contextList;
-    }
-}
-
-
-void ChoicePage::doReplacements(){
-    // Open a .txt file to write everything to
-    // TODO - ADD PDF NAME HERE
-    std::ofstream outFile("outputAll.txt");
-
-    // catch opening errors
-    if (!outFile.is_open()) {
-        std::cerr << "Failed to open output.txt for writing." << std::endl;
-        return;
-    }
-
-    int i = 0;
-    // Go through the book page by page and get replacements by searching in the map
-    for (const auto& pageText : *newPdfListHere) {
-        i++;
-        // a blank page to copy to
-        icu::UnicodeString modText = icu::UnicodeString::fromUTF8("");
-        
-        // For every character in the page
-        for (int32_t charIndex = 0; charIndex < pageText.length(); ) {
-            // Grab the character
-            UChar32 thisChar = pageText.char32At(charIndex);
-
-            // if this char is printable
-            if ((*uPrintableHere).find(thisChar) != (*uPrintableHere).end()) {
-                // simply copy over and move over by its size
-                modText += thisChar;
-                charIndex += U16_LENGTH(thisChar);  // Move by the length of the character
-            } else if ((*uNewLinesHere).find(thisChar) != (*uNewLinesHere).end()) {
-                // if it's a newline-like character, just add a newline
-                UChar32 replacement = u'\n';
-                modText += replacement;
-                charIndex += U16_LENGTH(thisChar);  // move over by newline length
-                
-            } else {
-                // otherwise it's a bad character
-                // if it's non-contextual, replace it with its replacement
-                if (!((*replacementDictHere)[thisChar].contextual)) {
-                    // get the replacement and convert it to a UChar32
-                    icu::UnicodeString replacement = (*replacementDictHere)[thisChar].replacement;
-                    modText += replacement;
-                    charIndex += U16_LENGTH(thisChar);  // you know the drill
-                } else{
-                    // if it's contextual, find its context and provide the suitable replacement
-                    // get conText tuple
-                    std::tuple<std::string, int, int, icu::UnicodeString> conText = getConText(charIndex, pageText);
-                    // just grab the context
-                    icu::UnicodeString context = std::get<3>(conText);
-                    // TODO: index into the context dictionary
-
-                    icu::UnicodeString replacement = (*contextDictHere)[thisChar][context];
-                    modText += replacement;
-                    charIndex += U16_LENGTH(thisChar);  // iterate past the character
-                }
-
-                /*
-                icu::UnicodeString original = icu::UnicodeString(thisChar);
-                std::string originalHolder;
-                original.toUTF8String(originalHolder);
-                std::string replacementHolder;
-                replacement.toUTF8String(replacementHolder);
-                std::cout << "replaced " << originalHolder << " with " << replacementHolder << std::endl;
-                */
-            }
-        }
-        
-        // Convert the page to UTF8 and write to the file
-        std::string utf8Page;
-        modText.toUTF8String(utf8Page);
-        outFile << utf8Page;
-    }
-
-    std::cout << "Done!" << std::endl;
-
-    // Close the file
-    outFile.close();
-
-}

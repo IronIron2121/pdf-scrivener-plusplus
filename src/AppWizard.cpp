@@ -23,9 +23,6 @@ AppWizard::AppWizard(int w, int h, const char* title) : Fl_Window(w, h, title) {
     getSets(uNewLines, newLines);
     getSets(uPrintablePlus, printablePlus);
 
-
-
-
     // initialise empty string to contain bad characters
     this->uBadChars = icu::UnicodeString::fromUTF8("");
 
@@ -38,6 +35,7 @@ AppWizard::AppWizard(int w, int h, const char* title) : Fl_Window(w, h, title) {
     // initialise maps that will contain contexts in which bad characters occurs, and their respective replacements
     this->contextDict = {};
     this->replacementDict = {};
+    this->contextList = {};
 
     // add the pages to the wizard
     this->wizard->add(openPage);
@@ -112,6 +110,9 @@ UChar32 AppWizard::getCurrBadChar(){
 }
 
 
+
+
+
 icu::UnicodeString AppWizard::getGivenBadChar(int index) {
     return this->uBadChars[index];
 }
@@ -184,11 +185,72 @@ std::tuple<std::string, int, int, icu::UnicodeString> AppWizard::getConText(int 
 
     return thisOut;
 }
+
+// like the above, but return only the string
+icu::UnicodeString AppWizard::getConTextC(int indx, const icu::UnicodeString& pageText) {
+    int32_t thisPageLength = pageText.length();
+
+    // error handling
+    if (indx < 0 || indx >= thisPageLength) {
+        std::cerr << "bad index with: " << indx << std::endl;
+        return icu::UnicodeString("N/A");
+    }
+
+    // get the pointers for this run and assign them
+    std::pair<int32_t,int32_t> pointers = getPointers(indx, pageText, thisPageLength);
+    int32_t leftPointer = pointers.first;
+    int32_t rightPointer = pointers.second;
+
+    // get the relative position of the bad character
+    int32_t leftDiff = indx - leftPointer;
+
+    // extract the context 
+    icu::UnicodeString context = pageText.tempSubString(leftPointer, rightPointer - leftPointer);
+
+    return context;
+}
+
+void AppWizard::getContextsForRep(UChar32 thisChar) {
+    std::cout << "GETTING CONTEXTS AT CONTEXT PAGE" << std::endl;
+    // 1. for every page in the book
+    int i = 0;
+    for(const auto page : this->newPdfList){
+        int32_t pageIt = 0;
+
+        while(pageIt < page.length()){
+            // i. if the current character is our current bad character
+            UChar32 pageChar = page.charAt(pageIt);
+
+            if (pageChar == thisChar) {
+                // 1. get the context of the bad character here
+                icu::UnicodeString context = this->getConTextC(pageIt, page);
+
+                // 2. add this context to the list of contexts if it's not there already
+                if (this->contextDict[thisChar].find(context) == this->contextDict[thisChar].end()) {
+                    this->contextDict[thisChar][context] = thisChar;
+                    // also add it to the vector of contexts
+                    this->contextList[getCurrBadChar()].push_back(context);
+                    // print from this index to test if it worked
+                    icu::UnicodeString test = this->contextList[getCurrBadChar()][i];
+                    std::string testStr;
+                    test.toUTF8String(testStr);
+                    std::cout << "TEST STRING: " << testStr << std::endl;
+                    std::cout << "CONTEXT LIST UP TO SIZE: " << this->contextList[getCurrBadChar()].size() << std::endl;
+                    i++;
+                } else{
+                    std::cout << "CONTEXT ALREADY IN DICT" << std::endl;
+                }
+            }
+            pageIt += U16_LENGTH(pageChar);
+        }
+    }
+}
+
 // function to get a list of contexts in which a bad character occurs
-std::vector<std::string> AppWizard::getBintexts() {
+std::vector<std::string> AppWizard::getListOfContexts() {
     // if bIndex is out of bounds, return an empty vector
     if (this->bIndex >= (this->uBadChars).length()) {
-        std::cout << "bIndex out of bounds at getBintexts()" << std::endl;
+        std::cout << "bIndex out of bounds at getListOfContexts()" << std::endl;
         return {};
     } else{
         UChar32 currBadChar = getCurrBadChar();
@@ -247,13 +309,14 @@ std::string AppWizard::getDisplayChar() {
         return "N/A";
     }
 
-    // grab the character
-    UChar32 realBadChar = this->uBadChars[this->bIndex];
-    // convert it to a unicode string
-    icu::UnicodeString charToUString(realBadChar);
-    // convert that to a std string, then return
+    // convert current bad character to a unicode string
+    icu::UnicodeString charToUString(getCurrBadChar());
+
+    // convert that to a std string
     std::string uStringToStdString;
     charToUString.toUTF8String(uStringToStdString);
+    
+    // return the std::string
     return uStringToStdString;
 
 }
@@ -322,6 +385,92 @@ int* AppWizard::getBIndex() {
     return &(this->bIndex);
 }
 
-int32_t* AppWizard::getCIndex(){
+int* AppWizard::getCIndex(){
     return &(this->cIndex);
+}
+
+// incremenet context index
+void AppWizard::upCIndex(){
+    this->cIndex++;
+}
+
+// reset context index to 0
+void AppWizard::resetCIndex(){
+    this->cIndex = 0;
+}
+
+// get the context corresponding to current cIndex
+icu::UnicodeString AppWizard::getCurrentContext(){
+    return this->contextList[this->getCurrBadChar()][this->cIndex];
+}
+
+// finally, the function that does all the replacements
+void AppWizard::doReplacements(){
+    // Open a .txt file to write everything to
+    // TODO - ADD PDF NAME HERE
+    std::ofstream outFile("outputAll.txt");
+
+    // catch opening errors
+    if (!outFile.is_open()) {
+        std::cerr << "Failed to open output.txt for writing." << std::endl;
+        return;
+    }
+
+    int i = 0;
+    // Go through the book page by page and get replacements by searching in the map
+    for (const auto& pageText : newPdfList) {
+        i++;
+        // a blank page to copy to
+        icu::UnicodeString modText = icu::UnicodeString::fromUTF8("");
+        
+        // For every character in the page
+        for (int32_t charIndex = 0; charIndex < pageText.length(); ) {
+            // Grab the character
+            UChar32 thisChar = pageText.char32At(charIndex);
+
+            // if this char is printable
+            if (uPrintable.find(thisChar) != uPrintable.end()) {
+                // simply copy over and move over by its size
+                modText += thisChar;
+                charIndex += U16_LENGTH(thisChar);  // Move by the length of the character
+            } else if (uNewLines.find(thisChar) != uNewLines.end()) {
+                // if it's a newline-like character, just add a newline
+                UChar32 replacement = u'\n';
+                modText += replacement;
+                charIndex += U16_LENGTH(thisChar);  // move over by newline length
+                
+            } else {
+                // otherwise it's a bad character
+                // if it's non-contextual, replace it with its replacement
+                if (!(replacementDict[thisChar].contextual)) {
+                    // get the replacement and convert it to a UChar32
+                    icu::UnicodeString replacement = (replacementDict)[thisChar].replacement;
+                    modText += replacement;
+                    charIndex += U16_LENGTH(thisChar);  // you know the drill
+                } else{
+                    // if it's contextual, find its context and provide the suitable replacement
+                    // get conText tuple
+                    std::tuple<std::string, int, int, icu::UnicodeString> conText = getConText(charIndex, pageText);
+                    // just grab the context
+                    icu::UnicodeString context = std::get<3>(conText);
+                    // TODO: index into the context dictionary
+
+                    icu::UnicodeString replacement = (contextDict)[thisChar][context];
+                    modText += replacement;
+                    charIndex += U16_LENGTH(thisChar);  // iterate past the character
+                }
+            }
+        }
+        
+        // Convert the page to UTF8 and write to the file
+        std::string utf8Page;
+        modText.toUTF8String(utf8Page);
+        outFile << utf8Page;
+    }
+
+    std::cout << "Done!" << std::endl;
+
+    // Close the file
+    outFile.close();
+
 }

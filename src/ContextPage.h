@@ -31,10 +31,10 @@ class Fl_Multiline_Output;
 
 class ContextPage : public MyPage {
 private:
-
-
+    void initAttributes();
+    void initDisplays();
+    void initPointers();
     // -------------- STRUCTS -------------- //
-
     struct ContextWidgets {
         Fl_Box* contextBox;
         Fl_Input* replacementInput;
@@ -51,33 +51,35 @@ private:
     // -------------- NUMERICAL ATTRIBUTES & FUNCTIONS-------------- //
 
     int* bIndexHere; // bad char index from parent
-
+    int* cIndexHere;
+    int listSize;
 
     Fl_Window* win;
     Fl_Scroll* scroll;
 
-    std::map<UChar32, std::vector<icu::UnicodeString>>* contextListHere;
 
     Fl_Button* saveBtn;
     Fl_Button* noneBtn;
 
-    Fl_Box* getContextDisplay();
     Fl_Box* contextDisplay;
+    Fl_Box* getContextDisplay();
 
     void nextContext();
 
     icu::UnicodeString getCurrentContext();
 
-
-
     Fl_Input* replacementInput;
 
     // variables referenced from parent
+    std::string displayChar;
     icu::UnicodeString* newPdfTextHere; // cleaned extracted text as one long string
-    std::vector<icu::UnicodeString>* newPdfListHere; // cleaned extracted text, page by page
-    std::map<UChar32, std::map<icu::UnicodeString, icu::UnicodeString>>* contextDictHere; // replacement info for each bad char
 
-    std::vector<icu::UnicodeString> contexts;
+    std::vector<icu::UnicodeString>* newPdfListHere; // cleaned extracted text, page by page
+
+
+    std::map<UChar32, std::map<icu::UnicodeString, icu::UnicodeString>>* contextDictHere; // replacement info for each bad char
+    std::map<UChar32, std::vector<icu::UnicodeString>>* contextListHere;
+
 
     icu::UnicodeString getConText(int32_t indx, const icu::UnicodeString& pageText);
     void getContexts(UChar32 thisChar);
@@ -95,10 +97,9 @@ private:
     std::unordered_set<UChar32>* uPrintablePlus; // uPrintable + extras
     std::unordered_set<UChar32>* uNewLines; // list of new line characters
 
+    std::map<icu::UnicodeString, ContextWidgets> contextMap;
     std::map<UChar32, int>* uCharOccursHere; // a pointer to the map of every char and its occurrences
-    UChar32 getCurrBadChar();
-    UChar32 currBadChar;
-    int32_t* cIndexHere;
+
 
     AppWizard* parent; // parent wizard
 
@@ -106,24 +107,15 @@ private:
 
     bool endChecker(UChar32 thisChar, const icu::UnicodeString& enders);
 
+    std::string contextStr;
 
 
-    void processPDFDoc(); // function to process pdfs
-    void initAttributes();
-    void processPageText(const icu::UnicodeString& pageText); // process a single page of doc
-    void processChar(UChar32 currentChar, bool& leadingWhiteSpace, int32_t charIt); // process a single char of page
-    void makeOutput(Fl_Multiline_Output* badHere); // print output to console
-    void processPage(const icu::UnicodeString& page);
 
-    bool isPrintable(UChar32 currentChar); // check if char is printable / "good"
-
-    std::map<icu::UnicodeString, ContextWidgets> contextMap;
 
 
 public:
     ContextPage(int x, int y, int w, int h, AppWizard* parent, const char* title);
-    void newInit(AppWizard** thisParent);
-    void testInit(ContextPage* thisPage, int w, int h);
+    void newInit();
     int x;
     int xGap;
     int y;
@@ -134,6 +126,8 @@ public:
     static void saveBtnCb(Fl_Widget* widget, void* data);
     static void noneBtnCb(Fl_Widget* widget, void* data);
     void refreshContext();
+
+
 };
 
 #endif

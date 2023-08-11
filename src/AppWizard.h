@@ -19,9 +19,7 @@ class ContextPage;
 class AppWizard : public Fl_Window {
 private:
     Fl_Wizard* wizard;
-    OpenPDFPage* openPage;
-    ChoicePage* choicePage; 
-    ContextPage* contextPage;
+
 
 
     std::string spaces; // list of "good" characters
@@ -48,13 +46,22 @@ private:
 public:
     AppWizard(int w, int h, const char* title = 0);
 
+    OpenPDFPage* openPage;
+    ChoicePage* choicePage; 
+    ContextPage* contextPage;
+
     int bIndex; // current bad character index
-    int32_t cIndex;
-    int32_t* getCIndex();
+    int cIndex;
+    int* getCIndex();
     int* getBIndex(); // returns current bad character index
 
     // getter methods
     void upBIndex(); // increment bIndex
+    void upCIndex();
+
+    void resetCIndex();
+
+
 
     // get replacement dictionary
     std::map<UChar32, ReplacementInfo>* getReplacementDict(); 
@@ -88,7 +95,7 @@ public:
     void pushToNewPdfText(icu::UnicodeString pageText); // push to it
     void pushToNewPdfList(icu::UnicodeString pageText); // push provided text to the book
 
-    std::vector<std::string> getBintexts(); // a list of contexts for given bIndex
+    std::vector<std::string> getListOfContexts(); // a list of contexts for given bIndex
 
 
     std::map<UChar32, int>* getUCharOccurs(); // gets character occurences
@@ -106,6 +113,10 @@ public:
     std::map<UChar32, std::map<icu::UnicodeString, icu::UnicodeString>> contextDict;
 
     std::map<UChar32, std::map<icu::UnicodeString, icu::UnicodeString>>* getContextDict();
+    icu::UnicodeString getConTextC(int indx, const icu::UnicodeString& pageText);
+    icu::UnicodeString getCurrentContext();
+    void getContextsForRep(UChar32 thisChar);
+
 
 
 
@@ -114,6 +125,7 @@ public:
      // get pointers for context
     std::pair<int32_t,int32_t> getPointers(int indx, const icu::UnicodeString& pageText, const int32_t thisPageLength);
     void doReplacements();
+
     ~AppWizard();
 };
 
