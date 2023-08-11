@@ -50,10 +50,9 @@ AppWizard::AppWizard(int w, int h, const char* title) : Fl_Window(w, h, title) {
     this->cIndex = 0;
 
     // end the wizard
-    wizard->end();
+    this->wizard->end();
 }
 
-// this is mostly here to debug memory issues. it's not called anywhere
 AppWizard::~AppWizard(){
     std::cout << "AppWizard destructor called" << std::endl;
 }
@@ -62,68 +61,64 @@ AppWizard::~AppWizard(){
 std::unordered_set<UChar32>* AppWizard::getUSpaces() {
     return &(this->uSpaces);
 }
-// returns uNewLines characters
+
 std::unordered_set<UChar32>* AppWizard::getUNewLines() {
     return &(this->uNewLines);
 }
-// returns uPrintable characters
+
 std::unordered_set<UChar32>* AppWizard::getUPrintable() {
     return &(this->uPrintable);
 }
-// return the whole list of printable characters
+
 std::unordered_set<UChar32>* AppWizard::getUPrintablePlus() {
     return &(this->uPrintablePlus);
 }
 
-// function that takes a string and turns it into an unordered set of UChar32
 void AppWizard::getSets(std::unordered_set<UChar32>& set, const std::string& stdStr) {
+    // convert the string to a UnicodeString
     icu::UnicodeString uStr = icu::UnicodeString::fromUTF8(stdStr);
-    for (int32_t i = 0; i < uStr.length(); ++i) {
+    for (int32_t i = 0; i < uStr.length();) {
+        // get the character
+        UChar thisChar = uStr.char32At(i);
+        
+        // push it into the set
         set.insert(uStr.char32At(i));
+
+        // iterate by character length
+        i += U16_LENGTH(thisChar);
+
     }
 }
 
-// returns a pointer to the list of character occurrences
 std::map<UChar32, int>* AppWizard::getUCharOccurs() {
     return &(this->uCharOccurs);
 }
 
-// returns the number of occurrences of a specific character
 int AppWizard::getUCharOccur(UChar32 thisBadChar){
     return this->uCharOccurs[thisBadChar];
 }
 
-// updates the char occurrences given a sent character
 void AppWizard::upUCharOccur(UChar32 thisUChar) {
     this->uCharOccurs[thisUChar]++;
 }
 
-// increments the current bad character index
 void AppWizard::upBIndex() {
     this->bIndex++;
-    // std::cout << "bIndex: " << bIndex << std::endl;
 }
 
 UChar32 AppWizard::getCurrBadChar(){
-    //std::cerr << "Error: bIndex exceeds uBadChars length. bIndex: " << bIndex << ", uBadChars length: " << uBadChars.length() << std::endl;
     return this->uBadChars[this->bIndex];
 }
-
-
-
-
 
 icu::UnicodeString AppWizard::getGivenBadChar(int index) {
     return this->uBadChars[index];
 }
 
-// function that checks if a character marks the end or beginning of a context
 bool AppWizard::endChecker(UChar32 thisChar, const icu::UnicodeString& enders) {
     // if this character is an ender, return true
     return enders.indexOf(thisChar) != -1;
 }
 
-// function that finds the left and right limits of the context in which a bad character occurs
 std::pair<int32_t,int32_t> AppWizard::getPointers(int indx, const icu::UnicodeString& pageText, const int32_t thisPageLength){
     // list of characters that end a sentence
     icu::UnicodeString enders = u" .,\n";
@@ -146,7 +141,6 @@ std::pair<int32_t,int32_t> AppWizard::getPointers(int indx, const icu::UnicodeSt
     return this_out;
 }
 
-// function to get a string expressing the context in which a bad character occurs
 std::tuple<std::string, int, int, icu::UnicodeString> AppWizard::getConText(int indx, const icu::UnicodeString& pageText) {
     int32_t thisPageLength = pageText.length();
 
@@ -186,27 +180,18 @@ std::tuple<std::string, int, int, icu::UnicodeString> AppWizard::getConText(int 
     return thisOut;
 }
 
-// like the above, but return only the string
+// same principle as above, but returns only the unicode string
 icu::UnicodeString AppWizard::getConTextC(int indx, const icu::UnicodeString& pageText) {
     int32_t thisPageLength = pageText.length();
-
-    // error handling
     if (indx < 0 || indx >= thisPageLength) {
         std::cerr << "bad index with: " << indx << std::endl;
         return icu::UnicodeString("N/A");
     }
-
-    // get the pointers for this run and assign them
     std::pair<int32_t,int32_t> pointers = getPointers(indx, pageText, thisPageLength);
     int32_t leftPointer = pointers.first;
     int32_t rightPointer = pointers.second;
-
-    // get the relative position of the bad character
     int32_t leftDiff = indx - leftPointer;
-
-    // extract the context 
     icu::UnicodeString context = pageText.tempSubString(leftPointer, rightPointer - leftPointer);
-
     return context;
 }
 
@@ -297,8 +282,6 @@ std::vector<std::string> AppWizard::getListOfContexts() {
     }
 }
 
-
-// gets the character corresponding to the current bIndex and turns it into an std::string
 std::string AppWizard::getDisplayChar() {
     // if there are no bad characters, return N/A
     if(!this->uBadChars.length()) {
@@ -321,25 +304,26 @@ std::string AppWizard::getDisplayChar() {
 
 }
 
-// -- GET AND MODIFY FUNCTIONS FOR INITIAL AND PROCESSED PDF STRING -- //
 icu::UnicodeString* AppWizard::getUPdfText(){
     return &(this->uPdfText);
 }
+
 void AppWizard::pushToUPdfText(icu::UnicodeString pageText){
     this->uPdfText.append(pageText);
 }
+
 icu::UnicodeString* AppWizard::getNewPdfText(){
     return &(this->newPdfText);
 }
+
 void AppWizard::pushToNewPdfText(icu::UnicodeString pageText){
     this->newPdfText += pageText;
 }
-// ------------------------------------------------------------- //
 
-// -- GET AND MODIFY FUNCTIONS FOR INITIAL AND PROCESSED PDF-LIST -- //
 std::vector<icu::UnicodeString>* AppWizard::getUPdfList(){
     return &(this->uPdfList);
 }
+
 void AppWizard::pushToUPdfList(icu::UnicodeString pageText){
     // get string version of text
     try{
@@ -349,15 +333,15 @@ void AppWizard::pushToUPdfList(icu::UnicodeString pageText){
     }
     std::cout << "success!" << std::endl;
 }
+
 std::vector<icu::UnicodeString>* AppWizard::getNewPdfList(){
     return &(this->newPdfList);
 }
+
 void AppWizard::pushToNewPdfList(icu::UnicodeString pageText){
     this->newPdfList.push_back(pageText);
 }
-// ------------------------------------------------------------------------- //
 
-// get reference to replacement dictionary
 std::map<UChar32, ReplacementInfo>* AppWizard::getReplacementDict(){
     return &(this->replacementDict);
 }
@@ -389,22 +373,18 @@ int* AppWizard::getCIndex(){
     return &(this->cIndex);
 }
 
-// incremenet context index
 void AppWizard::upCIndex(){
     this->cIndex++;
 }
 
-// reset context index to 0
 void AppWizard::resetCIndex(){
     this->cIndex = 0;
 }
 
-// get the context corresponding to current cIndex
 icu::UnicodeString AppWizard::getCurrentContext(){
     return this->contextList[this->getCurrBadChar()][this->cIndex];
 }
 
-// finally, the function that does all the replacements
 void AppWizard::doReplacements(){
     // Open a .txt file to write everything to
     // TODO - ADD PDF NAME HERE
@@ -430,34 +410,35 @@ void AppWizard::doReplacements(){
 
             // if this char is printable
             if (uPrintable.find(thisChar) != uPrintable.end()) {
-                // simply copy over and move over by its size
-                modText += thisChar;
-                charIndex += U16_LENGTH(thisChar);  // Move by the length of the character
-            } else if (uNewLines.find(thisChar) != uNewLines.end()) {
-                // if it's a newline-like character, just add a newline
+                modText += thisChar; // copy to output text
+                charIndex += U16_LENGTH(thisChar);  // move over by the length of the character
+            } 
+            else if (uNewLines.find(thisChar) != uNewLines.end()) {
+                // if it's a newline-like character, just add a newline (shouldn't be necessary, but good to have)
                 UChar32 replacement = u'\n';
                 modText += replacement;
-                charIndex += U16_LENGTH(thisChar);  // move over by newline length
+                charIndex += U16_LENGTH(thisChar);  
                 
-            } else {
+            } 
+            else {
                 // otherwise it's a bad character
                 // if it's non-contextual, replace it with its replacement
                 if (!(replacementDict[thisChar].contextual)) {
                     // get the replacement and convert it to a UChar32
                     icu::UnicodeString replacement = (replacementDict)[thisChar].replacement;
                     modText += replacement;
-                    charIndex += U16_LENGTH(thisChar);  // you know the drill
+                    charIndex += U16_LENGTH(thisChar);  
                 } else{
                     // if it's contextual, find its context and provide the suitable replacement
                     // get conText tuple
                     std::tuple<std::string, int, int, icu::UnicodeString> conText = getConText(charIndex, pageText);
                     // just grab the context
                     icu::UnicodeString context = std::get<3>(conText);
-                    // TODO: index into the context dictionary
 
+                    // find the replacement associated with this context
                     icu::UnicodeString replacement = (contextDict)[thisChar][context];
-                    modText += replacement;
-                    charIndex += U16_LENGTH(thisChar);  // iterate past the character
+                    modText += replacement; // add the replacement to output text
+                    charIndex += U16_LENGTH(thisChar);  
                 }
             }
         }

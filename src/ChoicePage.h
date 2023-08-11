@@ -29,19 +29,21 @@ class ContextPage;
 class ChoicePage : public MyPage {
 private:
     AppWizard* parent;
+    ContextPage** contextPageHere;
+    ChoicePage* choicePage; 
 
-
+    // struct containing vars to send to callbacks
     struct choicePack {
         int choice;
         ChoicePage* instance ;
     };
 
+    // choice packs for each option
     choicePack* pack0;
     choicePack* pack1;
     choicePack* pack2;
 
-
-
+    // basic object attributes
     int x;
     int xGap;
     int y;
@@ -50,23 +52,17 @@ private:
     int h;
 
     int* bIndexHere; // bad char index from parent
-
-    std::string displayChar;
-    std::string charText;
-
-
-    std::vector<Fl_Box*> charTextBoxes;
-
     icu::UnicodeString* uBadCharsHere; // list of bad characters from parent
-
-
-    UChar32 currBadChar;
-    ContextPage** contextPageHere;
-
-    // combined structure to store and easily access replacement infos during replacement
-    ChoicePage* choicePage; 
-
     std::map<UChar32, std::map<icu::UnicodeString, icu::UnicodeString>>* contextDictHere;
+
+    std::string displayChar; // current displayed character
+    std::string charText; // string expressing current displayed character
+    std::vector<Fl_Box*> charTextBoxes; // boxes to display current character contexts
+
+    UChar32 currBadChar; // store current bad character
+
+
+
     std::map<UChar32, ReplacementInfo>* replacementDictHere; // replacement info for each bad char
 
 
@@ -92,8 +88,7 @@ public:
     void initDisplays();
     void initPointers();
 
-    // refresh display values
-    void refreshVals(); 
+    void refreshVals(); // refresh values on page
     void nextChar(); // go-to next bad character
 
     

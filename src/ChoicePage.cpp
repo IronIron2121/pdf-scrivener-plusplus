@@ -129,6 +129,7 @@ void ChoicePage::contextCb() {
     // contextual replacement
     (*(this->replacementDictHere))[this->currBadChar].contextual = true;
 
+    // hide this page, initialise the context page, and show it
     this->hide();
     this->parent->contextPage->newInit();
     this->parent->contextPage->show();
@@ -148,7 +149,6 @@ void ChoicePage::nextChar() {
     }
 }
 
-// update the values on page
 void ChoicePage::refreshVals() {
     // update bad char display
     std::string newText = "Character " + std::to_string((this->parent->bIndex) + 1) + "/" + std::to_string(this->uBadCharsHere->length()) + ": " + std::string(this->parent->getDisplayChar() + ", with " + std::to_string(this->parent->getUCharOccur(this->parent->getCurrBadChar())) + " occurrences");

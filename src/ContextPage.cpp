@@ -34,7 +34,6 @@ void ContextPage::initAttributes(){
 }
 
 void ContextPage::initDisplays(){
-    this->contextStr = "Current Context: ";
 
     this->x += this->xGap;
     // display the current context using Fl_Box

@@ -17,19 +17,18 @@ OpenPDFPage::OpenPDFPage(int x, int y, int w, int h, AppWizard* parent, const ch
     this->end();
 }
 
-// function to grab attributes from parent...make the code less of an eyesore
 void OpenPDFPage::initAttributes(){
     // get uSpaces from parent
-    this->uSpaces = this->parent->getUSpaces();
+    this->uSpacesHere = this->parent->getUSpaces();
 
     // get uPrintable from parent
-    this->uPrintable = this->parent->getUPrintable();
+    this->uPrintableHere = this->parent->getUPrintable();
 
     // get uNewLines from parent
-    this->uNewLines = this->parent->getUNewLines();
+    this->uNewLinesHere = this->parent->getUNewLines();
 
     // get uPrintable from parent
-    this->uPrintablePlus = this->parent->getUPrintablePlus();
+    this->uPrintablePlusHere = this->parent->getUPrintablePlus();
 
     // get the choicePage from parent
     this->choicePageHere = this->parent->getChoicePage();
@@ -43,8 +42,8 @@ void OpenPDFPage::initAttributes(){
     this->newPdfListHere = this->parent->getNewPdfList();
 
     // link to bad characters and their occurrences
-    this->uBadChars = this->parent->getUBadChars(); 
-    this->uCharOccurs = this->parent->getUCharOccurs();
+    this->uBadCharsHere = this->parent->getUBadChars(); 
+    this->uCharOccursHere = this->parent->getUCharOccurs();
 
     // activate buttons
     this->loadBtn->callback(activateLoad, this);
@@ -134,16 +133,15 @@ void OpenPDFPage::processPageText(const icu::UnicodeString& uPageText) {
     }
 }
 
-// function that determines what type of character a character is, thence what to do with it
 void OpenPDFPage::processChar(UChar32 uChar, bool& leadingWhiteSpace, int32_t charIt) {
     // if character is a space
-    if(leadingWhiteSpace && this->uSpaces->find(uChar) != this->uSpaces->end()){
+    if(leadingWhiteSpace && this->uSpacesHere->find(uChar) != this->uSpacesHere->end()){
         // just skip
         return;
     } 
     
     // else, if the character is a newline-like
-    else if(this->uNewLines->find(uChar) != uNewLines->end()){
+    else if(this->uNewLinesHere->find(uChar) != uNewLinesHere->end()){
         // simply add a newline to the string
         *(this->newPdfTextHere) += icu::UnicodeString("\n", "UTF-8");
         this->newPdfListHere->back() += icu::UnicodeString("\n", "UTF-8");
@@ -151,7 +149,7 @@ void OpenPDFPage::processChar(UChar32 uChar, bool& leadingWhiteSpace, int32_t ch
     } 
 
     // else, if the character is a "good" one
-    else if (this->uPrintable->find(uChar) != uPrintable->end()) {
+    else if (this->uPrintableHere->find(uChar) != uPrintableHere->end()) {
         // no more leading whitespace
         leadingWhiteSpace = false;
         *(this->newPdfTextHere) += uChar; // add it to the big string
@@ -164,26 +162,25 @@ void OpenPDFPage::processChar(UChar32 uChar, bool& leadingWhiteSpace, int32_t ch
         leadingWhiteSpace = false;
 
         // if we haven't see this bad character yet, add it our list of bad characters
-        if(this->uCharOccurs->find(uChar) == this->uCharOccurs->end()){
-            *(this->uBadChars) += uChar;
+        if(this->uCharOccursHere->find(uChar) == this->uCharOccursHere->end()){
+            *(this->uBadCharsHere) += uChar;
         }
 
-        (*(this->uCharOccurs))[uChar] += 1; // increment the number of occurrences of this bad character
+        (*(this->uCharOccursHere))[uChar] += 1; // increment the number of occurrences of this bad character
         *(this->newPdfTextHere) += uChar; // add it to the big string
         this->newPdfListHere->back() += uChar; // add it to big list
 
     }
 }
 
-// function to build the output message
 void OpenPDFPage::makeOutput(Fl_Multiline_Output* badHere) {
     // initialise output message
-    std::string outputMessage = std::to_string(uCharOccurs->size()) + " bad characters found:\n";
+    std::string outputMessage = std::to_string(uCharOccursHere->size()) + " bad characters found:\n";
 
     // *shudders*
-    if(this->uCharOccurs) {
+    if(this->uCharOccursHere) {
         // go thru every key-value pair in the dictionary
-        for(const auto& [thisChar, occur] : *(uCharOccurs)) {
+        for(const auto& [thisChar, occur] : *(uCharOccursHere)) {
             // wrap the char in unicode string then convert that to std::string
             std::string charStr;
             icu::UnicodeString(thisChar).toUTF8String(charStr);
