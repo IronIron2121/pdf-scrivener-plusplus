@@ -93,6 +93,7 @@ void ContextPage::nextContext() {
         std::cout << "\nContext index: " << *(this->cIndexHere) << std::endl;
         std::cout << "Context Lists Size: " << ((*(this->contextListHere))[this->parent->getCurrBadChar()].size()) << std::endl;
         this->hide();
+        this->parent->resetCIndex(); // reset cindex after context page for one character is finished
         this->parent->choicePage->nextChar();
         this->parent->choicePage->show();
     } else {

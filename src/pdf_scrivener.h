@@ -3,5 +3,6 @@
 
 // gui
 #include <FL/Fl.H>
+#include <FL/Fl_Native_File_Chooser.H>
 
 #endif 
