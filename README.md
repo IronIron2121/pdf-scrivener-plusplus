@@ -1,13 +1,19 @@
 # ```<head><h1>PDF-SCRIVENER</h1></head>```
 
-I am not a clever man
+# ```<body><h2>HOW TO BUILD</h2>```
+This project is built with CMake. To get it setup you, just run
+```
+mkdir build 
+cd build
+cmake ..
+cd ..
+cmake --build build
+```
 
-## ```<body><h3>notes</h3>```
+Then you can launch with
+```sudo ./build/pdf_scrivener```
 
-There was a much longer commit history, but I erased it somehow...something to do with rebasing.
-
-## ```<p>TODO</p>```
-
-everything, lol
-
-## ```</body>```
+# ```<h2>DEPENDENCIES</h2><\body>```
+- Poppler: https://poppler.freedesktop.org/
+- ICU (International Components for Unicode): https://icu.unicode.org/
+- FLTK (Fast Light Toolkit): https://www.fltk.org/
