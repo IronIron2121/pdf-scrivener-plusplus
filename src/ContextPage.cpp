@@ -9,6 +9,10 @@
 ContextPage::ContextPage(int x, int y, int w, int h, AppWizard* parent, const char* title) : MyPage(x, y, w, h, title) {
     // init parent
     this->parent = parent;
+    this->x = x;
+    this->y = y;
+    this->w = w;
+    this->h = h;
     // init pointers
     this->initPointers();
     // init attributes
@@ -34,9 +38,10 @@ void ContextPage::initAttributes(){
 }
 
 void ContextPage::initDisplays(){
+    this->x = 0;
     this->x += this->xGap;
     // display the current context using Fl_Box
-    this->contextDisplay = new Fl_Box(this->x + 200, this->y, 90, 60, "init");
+    this->contextDisplay = new Fl_Box(this->x, this->y, w - 500, 60, "init");
     this->y += this->yGap;
     this->replacementInput = new Fl_Input(this->x, this->y, 200, 40, "Replacement: ");
     this->x += this->xGap;
@@ -81,7 +86,6 @@ void ContextPage::newInit(){
     this->parent->getContextsForRep(this->parent->getCurrBadChar());
     this->listSize = (*(this->contextListHere))[this->parent->getCurrBadChar()].size();
     this->refreshContext();
-
 }
 
 void ContextPage::nextContext() {
