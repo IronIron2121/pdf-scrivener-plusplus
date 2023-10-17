@@ -1,6 +1,6 @@
 # PDF-SCRIVENER
 ## HOW TO BUILD
-This project is built with CMake. To get it setup you, just run
+This project is built with CMake. To get it setup, just run
 ```
 mkdir build 
 cd build
